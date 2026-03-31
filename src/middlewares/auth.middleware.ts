@@ -78,7 +78,7 @@ export class AuthMiddleware {
           phone: decoded.phone,
         };
       } catch (error) {
-        // Invalid token, but we don't throw error for optional auth
+        // Invalid token, but i  don't throw error for optional auth
         logger.debug("Optional auth token invalid");
       }
     }

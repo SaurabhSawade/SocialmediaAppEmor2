@@ -1,12 +1,13 @@
 import bcrypt from "bcryptjs";
 import UserRepository from "../repositories/user.repository";
+import TokenRepository from '../repositories/token.repository';
 import OTPService from "./otp.service";
 import TokenService from "./token.service";
-import { OTPType } from "../constants/enums";
+import { OTPType, TokenType } from "../constants/enums";
 import { Messages } from "../constants/messages";
 import { RegisterDTO, LoginDTO, AuthResponseDTO } from "../types/dto/auth.dto";
 import { Helpers } from "../utils/helpers";
-import logger from "../config/logger";
+import prisma from "../prisma/client";
 
 export class AuthService {
   private static instance: AuthService;
@@ -90,15 +91,15 @@ export class AuthService {
     const tokens = TokenService.generateTokens(user.id, user.email, user.phone);
 
     return {
-      user: {
-        id: user.id,
-        email: user.email,
-        phone: user.phone,
-        username: user.profile!.username,
-        fullName: user.profile!.fullName,
-        avatarUrl: user.profile!.avatarUrl,
-        isVerified: user.isVerified,
-      },
+      // user: {
+      //   id: user.id,
+      //   email: user.email,
+      //   phone: user.phone,
+      //   username: user.profile!.username,
+      //   fullName: user.profile!.fullName,
+      //   avatarUrl: user.profile!.avatarUrl,
+      //   isVerified: user.isVerified,
+      // },
       tokens,
     };
   }
@@ -128,22 +129,43 @@ export class AuthService {
 
     const tokens = TokenService.generateTokens(user.id, user.email, user.phone);
 
+    // Save refresh token to database
+    const refreshExpiry = new Date();
+    refreshExpiry.setDate(refreshExpiry.getDate() + 30);
+    
+    await TokenRepository.saveToken(
+      user.id,
+      tokens.refreshToken,
+      TokenType.REFRESH,
+      refreshExpiry
+    );
+    
+    // Create session
+    await TokenRepository.createSession(
+      user.id,
+      tokens.refreshToken,
+      undefined,
+      undefined,
+      undefined
+    );
+
     return {
-      user: {
-        id: user.id,
-        email: user.email,
-        phone: user.phone,
-        username: user.profile!.username,
-        fullName: user.profile!.fullName,
-        avatarUrl: user.profile!.avatarUrl,
-        isVerified: user.isVerified,
-      },
+      // user: {
+      //   id: user.id,
+      //   email: user.email,
+      //   phone: user.phone,
+      //   username: user.profile!.username,
+      //   fullName: user.profile!.fullName,
+      //   avatarUrl: user.profile!.avatarUrl,
+      //   isVerified: user.isVerified,
+      // },
       tokens,
     };
   }
 
-  async resendOTP(identifier: string): Promise<{ message: string }> {
-    const user = await UserRepository.findByEmailOrPhone(identifier);
+  async resendOTP(identifier: string): Promise<{ message: string } | boolean> {
+    try {
+        const user = await UserRepository.findByEmailOrPhone(identifier);
 
     if (!user) {
       throw new Error(Messages.NOT_FOUND);
@@ -164,6 +186,11 @@ export class AuthService {
     );
 
     return { message: Messages.OTP_SENT };
+    } catch (error) {
+      console.log("Error in resendOTP:", error);
+      console.log("Error message:", (error as Error).message);
+      return false;
+    }
   }
 
   async verifyOTP(
@@ -197,11 +224,41 @@ export class AuthService {
     };
   }
 
+    async logout(refreshToken: string, logoutAll: boolean = false): Promise<{ message: string; revokedTokens: number }> {
+    // Verify refresh token
+    const payload = TokenService.verifyRefreshToken(refreshToken);
+    if (!payload) {
+      throw new Error(Messages.INVALID_TOKEN);
+    }
+    
+    if (logoutAll) {
+      // Revoke all user tokens except current
+      const result = await TokenRepository.revokeAllUserTokens(payload.userId, refreshToken);
+      await TokenRepository.revokeAllUserSessions(payload.userId, refreshToken);
+      
+      return {
+        message: 'Logged out from all devices successfully',
+        revokedTokens: result.count,
+      };
+    } else {
+      // Revoke only current token
+      await TokenRepository.revokeToken(refreshToken);
+      await TokenRepository.revokeSession(refreshToken);
+      
+      return {
+        message: Messages.LOGOUT_SUCCESS,
+        revokedTokens: 1,
+      };
+    }
+  }
+  
+
+
   async forgotPassword(identifier: string): Promise<{ message: string }> {
     const user = await UserRepository.findByEmailOrPhone(identifier);
 
     if (!user) {
-      throw new Error(Messages.NOT_FOUND);
+      throw new Error(Messages.USER_NOT_FOUND);
     }
 
     if (!user.email) {
@@ -227,8 +284,9 @@ export class AuthService {
     }
 
     const user = await UserRepository.findByEmailOrPhone(identifier);
-
+    
     if (!user) {
+      // console.log("User not found for identifier:", identifier);
       throw new Error(Messages.NOT_FOUND);
     }
 
@@ -238,6 +296,7 @@ export class AuthService {
       OTPType.PASSWORD_RESET,
     );
     if (!isValid) {
+      // console.log("Invalid OTP for user ID:", user.id);
       throw new Error(Messages.INVALID_OTP);
     }
 
@@ -276,26 +335,101 @@ export class AuthService {
     return { message: Messages.PASSWORD_CHANGED };
   }
 
-  async refreshToken(refreshToken: string): Promise<{ tokens: any }> {
+  async refreshToken(refreshToken: string, reqInfo?: { ip?: string; userAgent?: string }): Promise<{ tokens: any }> {
+    // Verify refresh token
     const payload = TokenService.verifyRefreshToken(refreshToken);
     if (!payload) {
       throw new Error(Messages.INVALID_TOKEN);
     }
-
-    const user = await UserRepository.findById(payload.userId);
-    if (!user) {
-      throw new Error(Messages.NOT_FOUND);
+    
+    // Check if token exists in database and is not revoked
+    const validToken = await TokenRepository.findValidToken(refreshToken, TokenType.REFRESH);
+    if (!validToken) {
+      throw new Error(Messages.INVALID_TOKEN);
     }
-
+    
+    // Check session
+    const session = await TokenRepository.findSession(refreshToken);
+    if (!session) {
+      throw new Error(Messages.INVALID_TOKEN);
+    }
+    
+    // Get user
+    const user = await UserRepository.findById(payload.userId);
+    if (!user || user.deletedAt) {
+      throw new Error(Messages.USER_NOT_FOUND);
+    }
+    
+    // Revoke old token
+    await TokenRepository.revokeToken(refreshToken);
+    
+    // Generate new tokens
     const tokens = TokenService.generateTokens(user.id, user.email, user.phone);
-
+    
+    // Save new refresh token
+    const refreshExpiry = new Date();
+    refreshExpiry.setDate(refreshExpiry.getDate() + 30);
+    
+    await TokenRepository.saveToken(
+      user.id,
+      tokens.refreshToken,
+      TokenType.REFRESH,
+      refreshExpiry
+    );
+    
+    // Update session with new token
+    await TokenRepository.revokeSession(refreshToken);
+    await TokenRepository.createSession(
+      user.id,
+      tokens.refreshToken,
+      reqInfo?.userAgent,
+      reqInfo?.ip,
+      reqInfo?.userAgent
+    );
+    
     return { tokens };
   }
 
-  async logout(userId: number): Promise<void> {
-    // Optional: Add token to blacklist in Redis
-    logger.info(`User ${userId} logged out`);
+    async getSessions(userId: number, currentToken: string): Promise<any[]> {
+    const sessions = await TokenRepository.getUserSessions(userId);
+    
+    return sessions.map(session => ({
+      id: session.id,
+      deviceInfo: session.deviceInfo,
+      ipAddress: session.ipAddress,
+      lastActivity: session.lastActivity,
+      createdAt: session.createdAt,
+      isCurrent: session.token === currentToken,
+    }));
   }
+  
+    async revokeSession(userId: number, sessionId: string, currentToken: string): Promise<{ message: string }> {
+    const session = await TokenRepository.findSession(currentToken);
+    
+    if (!session) {
+      throw new Error('Session not found');
+    }
+    
+    // Don't allow revoking current session
+    if (session.id === sessionId) {
+      throw new Error('Cannot revoke current session. Use logout instead.');
+    }
+    
+    // Get session to revoke
+    const sessionToRevoke = await prisma.session.findUnique({
+      where: { id: sessionId, userId },
+    });
+    
+    if (!sessionToRevoke) {
+      throw new Error('Session not found');
+    }
+    
+    await TokenRepository.revokeToken(sessionToRevoke.token);
+    await TokenRepository.revokeSession(sessionToRevoke.token);
+    
+    return { message: 'Session revoked successfully' };
+  }
+  
 
   async getCurrentUser(userId: number): Promise<any> {
     const user = await UserRepository.getUserWithStats(userId);
@@ -322,5 +456,6 @@ export class AuthService {
     };
   }
 }
+
 
 export default AuthService.getInstance();

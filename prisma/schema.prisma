@@ -33,11 +33,19 @@ model User {
   isVerified Boolean  @default(false)
   deletedAt  DateTime?
 
+  lastLoginAt DateTime?
+  lastLoginIP String?   @db.VarChar(45)
+  isActive    Boolean   @default(true)
+
   profile Profile?
   posts   Post[]
   comments Comment[]
   likes   Like[]
   otps    OTP[]
+
+  tokens  Token[]      
+  sessions Session[]   
+
 
   followers Follow[] @relation("followers")
   following Follow[] @relation("following")
@@ -60,7 +68,15 @@ model Profile {
   fullName  String? @db.VarChar(100)
   bio       String? @db.Text
   avatarUrl String? @db.VarChar(255)
-
+  avatarKey String? @db.VarChar(255)  
+  website   String? @db.VarChar(255)
+  gender    String? @db.VarChar(20)
+  isPrivate Boolean @default(false)
+  
+  // Account settings
+  emailNotifications Boolean @default(true)
+  pushNotifications  Boolean @default(true)
+  
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([username])
@@ -206,4 +222,51 @@ model Message {
 
   @@index([conversationId])
   @@index([senderId])
+}
+
+model Token {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  token     String   @unique @db.VarChar(500)
+  type      TokenType
+  expiresAt DateTime
+  isRevoked Boolean  @default(false)
+  revokedAt DateTime?
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       Int
+  token        String   @unique @db.VarChar(500)
+  deviceInfo   String?  @db.Text
+  ipAddress    String?  @db.VarChar(45)
+  userAgent    String?  @db.Text
+  lastActivity DateTime @default(now())
+  expiresAt    DateTime
+  isActive     Boolean  @default(true)
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([token])
+  @@index([isActive])
+}
+
+
+enum TokenType {
+  ACCESS
+  REFRESH
+  PASSWORD_RESET
+  EMAIL_VERIFICATION
 }

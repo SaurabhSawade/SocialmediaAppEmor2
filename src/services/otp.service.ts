@@ -20,7 +20,7 @@ export class OTPService {
     userId: number,
     email: string,
     type: OTPType,
-  ): Promise<void> {
+  ): Promise<string> {
     const otp = Helpers.generateOTP();
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + OTP_EXPIRY_MINUTES);
@@ -29,6 +29,7 @@ export class OTPService {
     await EmailService.sendOTP(email, otp, type);
 
     logger.info(`OTP sent to user ${userId} for type: ${type}`);
+    return otp;
   }
 
   async verifyOTP(

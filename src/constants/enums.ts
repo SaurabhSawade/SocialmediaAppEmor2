@@ -21,5 +21,12 @@ export enum MessageType {
   VIDEO = "VIDEO",
 }
 
+export enum TokenType {
+  ACCESS = "ACCESS",
+  REFRESH = "REFRESH",
+  PASSWORD_RESET = "PASSWORD_RESET",
+  EMAIL_VERIFICATION = "EMAIL_VERIFICATION",
+}
+
 export const OTP_EXPIRY_MINUTES = 10;
 export const OTP_LENGTH = 6;

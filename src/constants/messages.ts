@@ -25,7 +25,7 @@ export const Messages = {
 
   // User Errors
   USER_NOT_FOUND: "User not found",
-  NOT_FOUND: "Routes not found",
+  NOT_FOUND: "User not found",
   EMAIL_EXISTS: "Email already registered",
   PHONE_EXISTS: "Phone number already registered",
   USERNAME_EXISTS: "Username already taken",

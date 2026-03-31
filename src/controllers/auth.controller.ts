@@ -7,6 +7,7 @@ import { AuthenticatedRequest } from "../types/request";
 import {
   RegisterDTO,
   LoginDTO,
+  LogoutDTO,
   VerifyOTPDTO,
   ForgotPasswordDTO,
   ResetPasswordDTO,
@@ -14,7 +15,6 @@ import {
   RefreshTokenDTO,
   AuthResponseDTO,
 } from "../types/dto/auth.dto";
-import logger from "../config/logger";
 
 export class AuthController {
   /**
@@ -36,7 +36,7 @@ export class AuthController {
         result,
       );
     } catch (error) {
-     return next(error);
+      return next(error);
     }
   }
 
@@ -52,14 +52,14 @@ export class AuthController {
     try {
       const loginData: LoginDTO = req.body;
       const result = await AuthService.login(loginData);
-      
+
       ApiResponseHandler.success<AuthResponseDTO>(
         res,
         Messages.LOGIN_SUCCESS,
         result,
       );
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 
@@ -75,10 +75,14 @@ export class AuthController {
     try {
       const { identifier }: { identifier: string } = req.body;
       const result = await AuthService.resendOTP(identifier);
-
-      ApiResponseHandler.success(res, result.message);
+      if(!result) {
+        ApiResponseHandler.error(res, 'Unable to resend OTP. Please try again later.', HttpStatus.INTERNAL_SERVER_ERROR);
+        return;
+      }
+      const message = typeof result === 'object' ? result.message : 'OTP resent successfully';
+      ApiResponseHandler.success(res, message);
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 
@@ -99,7 +103,7 @@ export class AuthController {
         tokens: result.tokens,
       });
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 
@@ -118,7 +122,7 @@ export class AuthController {
 
       ApiResponseHandler.success(res, result.message);
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 
@@ -132,7 +136,19 @@ export class AuthController {
     next: NextFunction,
   ): Promise<void> {
     try {
+      console.log('ResetPassword called with:', {
+        body: req.body,
+        path: req.path,
+        method: req.method,
+        headers: req.headers,
+      });
+
       const { identifier, otp, newPassword }: ResetPasswordDTO = req.body;
+
+      if (!identifier || !otp || !newPassword) {
+        throw new Error('Missing required fields: identifier, otp, and newPassword are required');
+      }
+
       const result = await AuthService.resetPassword(
         identifier,
         otp,
@@ -141,7 +157,8 @@ export class AuthController {
 
       ApiResponseHandler.success(res, result.message);
     } catch (error) {
-      next(error);
+      console.error('ResetPassword error:', error);
+      return next(error);
     }
   }
 
@@ -165,7 +182,7 @@ export class AuthController {
 
       ApiResponseHandler.success(res, result.message);
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 
@@ -173,44 +190,72 @@ export class AuthController {
    * Refresh access token
    * POST /api/v1/auth/refresh-token
    */
-  static async refreshToken(
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> {
+  static async refreshToken(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { refreshToken }: RefreshTokenDTO = req.body;
-      const result = await AuthService.refreshToken(refreshToken);
-
-      ApiResponseHandler.success(
-        res,
-        "Token refreshed successfully",
-        result.tokens,
-      );
+      
+      const reqInfo = {
+        ip: req.ip,
+        userAgent: req.get('user-agent'),
+      };
+      
+      const result = await AuthService.refreshToken(refreshToken, reqInfo);
+      
+      ApiResponseHandler.success(res, 'Token refreshed successfully', result.tokens);
     } catch (error) {
       next(error);
     }
   }
+  
 
   /**
    * Logout user
    * POST /api/v1/auth/logout
    */
-  static async logout(
-    req: AuthenticatedRequest,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> {
+   static async logout(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const userId = req.user!.id;
-      await AuthService.logout(userId);
-
-      ApiResponseHandler.success(res, Messages.LOGOUT_SUCCESS);
+      const { refreshToken, logoutAll = false }: LogoutDTO = req.body;
+      
+      if (!refreshToken) {
+        ApiResponseHandler.error(res, 'Refresh token required', HttpStatus.BAD_REQUEST);
+      }
+      
+      const result = await AuthService.logout(refreshToken, logoutAll);
+      
+      ApiResponseHandler.success(res, result.message, { revokedTokens: result.revokedTokens });
     } catch (error) {
       next(error);
     }
   }
 
+    static async getSessions(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user!.id;
+      const refreshToken = req.headers['x-refresh-token'] as string;
+      
+      const sessions = await AuthService.getSessions(userId, refreshToken);
+      
+      ApiResponseHandler.success(res, 'Sessions retrieved successfully', sessions);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+    static async revokeSession(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user!.id;
+      const sessionId = Array.isArray(req.params.sessionId) ? req.params.sessionId[0] : req.params.sessionId;
+      const refreshToken = req.headers['x-refresh-token'] as string;
+      
+      const result = await AuthService.revokeSession(userId, sessionId, refreshToken);
+      
+      ApiResponseHandler.success(res, result.message);
+    } catch (error) {
+      next(error);
+    }
+  }
+  
+  
   /**
    * Get current authenticated user
    * GET /api/v1/auth/me
@@ -226,7 +271,7 @@ export class AuthController {
 
       ApiResponseHandler.success(res, "User retrieved successfully", user);
     } catch (error) {
-      next(error);
+      return next(error);
     }
   }
 }

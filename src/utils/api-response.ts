@@ -10,6 +10,7 @@ export class ApiResponseHandler {
   ): Response {
     return res.status(statusCode).json({
       success: true,
+      statusCode,
       message,
       data,
       timestamp: new Date().toISOString(),
@@ -24,6 +25,7 @@ export class ApiResponseHandler {
   ): Response {
     const response: any = {
       success: false,
+      statusCode,
       message,
       timestamp: new Date().toISOString(),
     };

@@ -7,13 +7,19 @@ import logger from "../config/logger";
 
 export class ErrorMiddleware {
   static handle(error: Error, req: Request, res: Response, next: NextFunction) {
+    // Log detailed error information
     logger.error("Error occurred:", {
       error: error.message,
       stack: error.stack,
       path: req.path,
       method: req.method,
       ip: req.ip,
+      userAgent: req.get('user-agent'),
+      body: process.env.NODE_ENV === 'development' ? req.body : '[REDACTED]',
+      query: req.query,
+      params: req.params,
       user: (req as any).user?.id,
+      timestamp: new Date().toISOString(),
     });
 
     // Handle Prisma known errors
@@ -22,19 +28,26 @@ export class ErrorMiddleware {
         case "P2002":
           return ApiResponseHandler.error(
             res,
-            "A record with this field already exists",
+            "A record with this field already exists. Please use a different value.",
             HttpStatus.CONFLICT,
           );
         case "P2025":
           return ApiResponseHandler.error(
             res,
-            "Record not found",
+            "The requested record was not found.",
             HttpStatus.NOT_FOUND,
           );
-        default:
+        case "P2003":
           return ApiResponseHandler.error(
             res,
-            Messages.DATABASE_ERROR,
+            "Cannot perform this operation due to related data constraints.",
+            HttpStatus.BAD_REQUEST,
+          );
+        default:
+          logger.error("Unhandled Prisma error:", { code: error.code, meta: error.meta });
+          return ApiResponseHandler.error(
+            res,
+            "Database operation failed. Please try again later.",
             HttpStatus.INTERNAL_SERVER_ERROR,
           );
       }
@@ -44,8 +57,18 @@ export class ErrorMiddleware {
     if (error instanceof Prisma.PrismaClientValidationError) {
       return ApiResponseHandler.error(
         res,
-        "Invalid data provided",
+        "Invalid data provided. Please check your input format.",
         HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+
+    // Handle Prisma connection errors
+    if (error instanceof Prisma.PrismaClientInitializationError) {
+      logger.error("Database connection error:", error.message);
+      return ApiResponseHandler.error(
+        res,
+        "Database connection failed. Please try again later.",
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
 
@@ -53,7 +76,7 @@ export class ErrorMiddleware {
     if (error.name === "JsonWebTokenError") {
       return ApiResponseHandler.error(
         res,
-        Messages.INVALID_TOKEN,
+        "Invalid authentication token provided.",
         HttpStatus.UNAUTHORIZED,
       );
     }
@@ -61,12 +84,21 @@ export class ErrorMiddleware {
     if (error.name === "TokenExpiredError") {
       return ApiResponseHandler.error(
         res,
-        "Token expired",
+        "Your authentication token has expired. Please login again.",
         HttpStatus.UNAUTHORIZED,
       );
     }
 
-    // Handle custom business errors
+    // Handle validation errors (express-validator)
+    if (error.message && error.message.includes('Validation')) {
+      return ApiResponseHandler.error(
+        res,
+        error.message,
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+
+    // Handle custom business errors with specific messages
     const businessErrors = [
       Messages.INVALID_CREDENTIALS,
       Messages.USER_NOT_FOUND,
@@ -76,12 +108,23 @@ export class ErrorMiddleware {
       Messages.INVALID_OTP,
       Messages.EMAIL_NOT_VERIFIED,
       Messages.ACCOUNT_DELETED,
+      Messages.WEAK_PASSWORD,
+      Messages.NOT_FOUND,
       "Either email or phone is required",
       "Invalid username format",
       "Password must be at least 8 characters",
       "Current password is incorrect",
       "No email associated with this account",
       "Account already verified",
+      "Invalid email format",
+      "Phone must be 10-15 digits",
+      "Passwords do not match",
+      "Identifier (email or phone) is required",
+      "OTP is required",
+      "OTP must be 6 digits",
+      "OTP must be numeric",
+      "New password is required",
+      "Confirm password is required",
     ];
 
     if (businessErrors.includes(error.message)) {
@@ -92,12 +135,39 @@ export class ErrorMiddleware {
       );
     }
 
-    // Default error response
+    // Handle network/file system errors
+    const err = error as any;
+    if (err.code === 'ECONNREFUSED') {
+      return ApiResponseHandler.error(
+        res,
+        "External service is currently unavailable. Please try again later.",
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+
+    if (err.code === 'ENOTFOUND') {
+      return ApiResponseHandler.error(
+        res,
+        "Network connection failed. Please check your internet connection.",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Handle file upload errors
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return ApiResponseHandler.error(
+        res,
+        "File size exceeds the maximum allowed limit.",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Default error response with detailed logging in development
     const statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
     const message =
       process.env.NODE_ENV === "production"
         ? Messages.INTERNAL_ERROR
-        : error.message;
+        : `An unexpected error occurred: ${error.message}`;
 
     return ApiResponseHandler.error(res, message, statusCode);
   }

@@ -1,46 +1,65 @@
-import { Router } from "express";
-import { UserController } from "../../controllers/user.controller";
-import { AuthMiddleware } from "../../middlewares/auth.middleware";
+import { Router } from 'express';
+import { UserController } from '../../controllers/user.controller';
+import { AuthMiddleware } from '../../middlewares/auth.middleware';
+import { ValidationMiddleware } from '../../middlewares/validation.middleware';
+import {
+  updateProfileValidation,
+  updateSettingsValidation,
+  changeEmailValidation,
+  changePhoneValidation,
+  deleteAccountValidation,
+  updateAvatarValidation,
+  getPublicProfileValidation,
+} from '../../validations/user.validation';
 
 const router = Router();
 
-/**
- * @swagger
- * tags:
- *   name: Users
- *   description: User management endpoints
- */
+// All user routes require authentication
+router.use(AuthMiddleware.authenticate);
 
-/**
- * @swagger
- * /users/profile:
- *   get:
- *     summary: Get user profile
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Profile retrieved successfully
- */
-router.get("/profile", AuthMiddleware.authenticate, UserController.getProfile);
-
-/**
- * @swagger
- * /users/account:
- *   delete:
- *     summary: Delete user account (soft delete)
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Account deleted successfully
- */
-router.delete(
-  "/account",
-  AuthMiddleware.authenticate,
-  UserController.deleteAccount,
+// Profile routes
+router.get('/profile', UserController.getProfile);
+router.put('/profile', 
+  ValidationMiddleware.validate(updateProfileValidation),
+  UserController.updateProfile
 );
+
+// Avatar routes
+router.post('/avatar',
+  ValidationMiddleware.validate(updateAvatarValidation),
+  UserController.updateAvatar
+);
+router.delete('/avatar', UserController.removeAvatar);
+
+// Settings routes
+router.put('/settings',
+  ValidationMiddleware.validate(updateSettingsValidation),
+  UserController.updateSettings
+);
+
+// Email and phone change routes
+router.post('/change-email',
+  ValidationMiddleware.validate(changeEmailValidation),
+  UserController.changeEmail
+);
+router.post('/change-phone',
+  ValidationMiddleware.validate(changePhoneValidation),
+  UserController.changePhone
+);
+
+// Account deletion
+router.delete('/account',
+  ValidationMiddleware.validate(deleteAccountValidation),
+  UserController.deleteAccount
+);
+
+// Public profile (no auth required for view)
+router.get('/:username',
+  ValidationMiddleware.validate(getPublicProfileValidation),
+  UserController.getPublicProfile
+);
+
+// User stats
+router.get('/:userId/stats', UserController.getUserStats);
 
 export default router;
