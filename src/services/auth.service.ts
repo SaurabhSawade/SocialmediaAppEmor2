@@ -3,6 +3,8 @@ import UserRepository from "../repositories/user.repository";
 import TokenRepository from '../repositories/token.repository';
 import OTPService from "./otp.service";
 import TokenService from "./token.service";
+import EmailService from "./email.service";
+import logger from "../config/logger";
 import { OTPType, TokenType } from "../constants/enums";
 import { Messages } from "../constants/messages";
 import { RegisterDTO, LoginDTO, AuthResponseDTO } from "../types/dto/auth.dto";
@@ -224,30 +226,60 @@ export class AuthService {
     };
   }
 
-    async logout(refreshToken: string, logoutAll: boolean = false): Promise<{ message: string; revokedTokens: number }> {
+    async logout(
+    refreshToken: string,
+    logoutAll: boolean = false,
+    accessToken?: string,
+  ): Promise<{ message: string; revokedTokens: number }> {
     // Verify refresh token
     const payload = TokenService.verifyRefreshToken(refreshToken);
     if (!payload) {
       throw new Error(Messages.INVALID_TOKEN);
     }
     
+    let revokedCount = 0;
+
+    // Revoke access token if provided
+    if (accessToken) {
+      try {
+        const accessPayload = TokenService.verifyAccessToken(accessToken);
+        if (accessPayload) {
+          await TokenRepository.revokeAccessToken(
+            accessPayload.userId,
+            accessToken,
+            new Date(accessPayload.exp * 1000),
+          );
+          revokedCount++;
+          console.log(`Access token revoked for user ${accessPayload.userId}`);
+        }
+      } catch (error) {
+        logger.error("Failed to revoke access token:", error);
+        // Continue with logout even if access token revocation fails
+      }
+    }
+    
     if (logoutAll) {
-      // Revoke all user tokens except current
-      const result = await TokenRepository.revokeAllUserTokens(payload.userId, refreshToken);
+      // Revoke all user tokens and sessions
+      const tokenResult = await TokenRepository.revokeAllUserTokens(payload.userId, refreshToken);
       await TokenRepository.revokeAllUserSessions(payload.userId, refreshToken);
+      revokedCount += tokenResult.count;
+      
+      console.log(`All sessions revoked for user ${payload.userId}`);
       
       return {
         message: 'Logged out from all devices successfully',
-        revokedTokens: result.count,
+        revokedTokens: revokedCount,
       };
     } else {
-      // Revoke only current token
+      // Revoke only current session
       await TokenRepository.revokeToken(refreshToken);
       await TokenRepository.revokeSession(refreshToken);
       
+      console.log(`Current session revoked for user ${payload.userId}`);
+      
       return {
         message: Messages.LOGOUT_SUCCESS,
-        revokedTokens: 1,
+        revokedTokens: revokedCount > 0 ? revokedCount : 1,
       };
     }
   }
@@ -393,7 +425,7 @@ export class AuthService {
     async getSessions(userId: number, currentToken: string): Promise<any[]> {
     const sessions = await TokenRepository.getUserSessions(userId);
     
-    return sessions.map(session => ({
+    return sessions.map((session: any) => ({
       id: session.id,
       deviceInfo: session.deviceInfo,
       ipAddress: session.ipAddress,
@@ -454,6 +486,67 @@ export class AuthService {
       },
       createdAt: user.createdAt,
     };
+  }
+
+  async changeEmail(
+    userId: number,
+    currentPassword: string,
+    newEmail: string,
+  ): Promise<{ message: string }> {
+    // Validate new email format
+    if (!Helpers.isValidEmail(newEmail)) {
+      throw new Error("Invalid email format");
+    }
+
+    // Get user
+    const user = await UserRepository.findById(userId);
+    if (!user) {
+      throw new Error(Messages.NOT_FOUND);
+    }
+
+    // Verify current password
+    const isValidPassword = await this.comparePassword(
+      currentPassword,
+      user.password,
+    );
+    if (!isValidPassword) {
+      throw new Error("Current password is incorrect");
+    }
+
+    // Check if new email is different from current
+    if (user.email === newEmail) {
+      throw new Error("New email is the same as current email");
+    }
+
+    // Check if new email is already taken
+    const existingUser = await UserRepository.findByEmail(newEmail);
+    if (existingUser) {
+      throw new Error(Messages.EMAIL_EXISTS);
+    }
+
+    // Update email
+    await UserRepository.updateEmail(userId, newEmail);
+
+    // Send confirmation email
+    try {
+      await EmailService.sendEmail(
+        newEmail,
+        "Email Changed",
+        `Your email has been successfully changed to ${newEmail}`,
+      );
+      console.log(`Confirmation email sent to ${newEmail}`);
+    } catch (error) {
+      const err = error as Error;
+      console.error(`Failed to send email notification to ${newEmail}:`, err.message);
+      logger.error("Failed to send email change notification:", {
+        error: err.message,
+        newEmail,
+        stack: err.stack,
+      });
+      // Don't fail the operation - email change is already successful
+    }
+
+    return { message: "Email changed successfully" };
   }
 }
 

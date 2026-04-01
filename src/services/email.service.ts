@@ -173,6 +173,60 @@ export class EmailService {
       return false;
     }
   }
+
+  async sendEmail(to: string, subject: string, html: string): Promise<void> {
+    try {
+      // Development mode: Log email to console
+      if (env.NODE_ENV === 'development' && !this.transporter) {
+        console.log('\n' + '='.repeat(60));
+        console.log(` [DEV MODE] Email would be sent to: ${to}`);
+        console.log(` Subject: ${subject}`);
+        console.log(` Content: ${html.substring(0, 100)}...`);
+        console.log('='.repeat(60) + '\n');
+
+        logger.info(`[DEV MODE] Email sent to ${to}: ${subject}`);
+        return;
+      }
+
+      // Check if transporter is available
+      if (!this.transporter) {
+        throw new Error('Email service is not configured. Please check SMTP settings in .env');
+      }
+
+      // Send real email
+      const info = await this.transporter.sendMail({
+        from: env.EMAIL_FROM,
+        to,
+        subject,
+        html,
+      });
+
+      logger.info(`Email sent to ${to}`, {
+        messageId: info.messageId,
+        response: info.response,
+      });
+    } catch (error) {
+      const err = error as Error;
+      logger.error("Failed to send email:", {
+        error: err.message,
+        to,
+        subject,
+        stack: err.stack,
+      });
+
+      // In development, don't throw error if email fails
+      if (env.NODE_ENV === 'development') {
+        console.log('\n' + '='.repeat(60));
+        console.log(`⚠️  Email sending failed, but continuing in development mode`);
+        console.log(`📧 To: ${to}`);
+        console.log(`📝 Subject: ${subject}`);
+        console.log('='.repeat(60) + '\n');
+        return;
+      }
+
+      throw new Error("Failed to send email. Please try again later.");
+    }
+  }
 }
 
 export default EmailService.getInstance();

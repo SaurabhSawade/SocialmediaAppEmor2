@@ -33,6 +33,7 @@ export class UserService {
     const profile = await ProfileRepository.findByUserId(userId);
     
     if (!profile) {
+      console.error(`DEBUG: Profile not found for userId: ${userId}`);
       throw new Error(Messages.USER_NOT_FOUND);
     }
     

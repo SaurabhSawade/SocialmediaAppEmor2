@@ -14,10 +14,16 @@ import {
 
 const router = Router();
 
-// All user routes require authentication
-router.use(AuthMiddleware.authenticate);
+// Public routes (no auth required)
+router.get('/:username',
+  ValidationMiddleware.validate(getPublicProfileValidation),
+  UserController.getPublicProfile
+);
 
-// Profile routes
+router.get('/:userId/stats', UserController.getUserStats);
+
+// Protected routes (auth required)
+router.use(AuthMiddleware.authenticate);
 router.get('/profile', UserController.getProfile);
 router.put('/profile', 
   ValidationMiddleware.validate(updateProfileValidation),
@@ -52,14 +58,5 @@ router.delete('/account',
   ValidationMiddleware.validate(deleteAccountValidation),
   UserController.deleteAccount
 );
-
-// Public profile (no auth required for view)
-router.get('/:username',
-  ValidationMiddleware.validate(getPublicProfileValidation),
-  UserController.getPublicProfile
-);
-
-// User stats
-router.get('/:userId/stats', UserController.getUserStats);
 
 export default router;

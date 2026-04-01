@@ -1,0 +1,11 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Start Server for Testing",
+			"type": "shell",
+			"command": "cd /home/ubuntu/SocialMediaApp/server && node dist/server.js",
+			"isBackground": true
+		}
+	]
+}

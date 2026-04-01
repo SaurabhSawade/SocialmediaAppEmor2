@@ -218,3 +218,16 @@ export const revokeSessionValidation = [
     .isString()
     .withMessage('Invalid session ID'),
 ];
+
+export const changeEmailValidation: ValidationChain[] = [
+  body("currentPassword")
+    .notEmpty()
+    .withMessage("Current password is required"),
+
+  body("newEmail")
+    .notEmpty()
+    .withMessage("New email is required")
+    .matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)
+    .withMessage("Invalid email format")
+    .normalizeEmail(),
+];

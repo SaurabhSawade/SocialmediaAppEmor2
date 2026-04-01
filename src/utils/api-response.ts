@@ -1,3 +1,6 @@
+
+
+
 import { Response } from "express";
 import { HttpStatus } from "../constants/http-status";
 
@@ -39,5 +42,26 @@ export class ApiResponseHandler {
 
   static created<T>(res: Response, message: string, data?: T): Response {
     return this.success(res, message, data, HttpStatus.CREATED);
+  }
+
+
+    static badRequest(res: Response, message: string): Response {
+    return this.error(res, message, HttpStatus.BAD_REQUEST);
+  }
+  
+  static unauthorized(res: Response, message: string): Response {
+    return this.error(res, message, HttpStatus.UNAUTHORIZED);
+  }
+  
+  static forbidden(res: Response, message: string): Response {
+    return this.error(res, message, HttpStatus.FORBIDDEN);
+  }
+  
+  static notFound(res: Response, message: string): Response {
+    return this.error(res, message, HttpStatus.NOT_FOUND);
+  }
+  
+  static conflict(res: Response, message: string): Response {
+    return this.error(res, message, HttpStatus.CONFLICT);
   }
 }

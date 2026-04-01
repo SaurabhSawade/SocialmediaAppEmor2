@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import multer from 'multer';
 import { Prisma } from "../generated/prisma";
 import { ApiResponseHandler } from "../utils/api-response";
 import { Messages } from "../constants/messages";
@@ -6,7 +7,7 @@ import { HttpStatus } from "../constants/http-status";
 import logger from "../config/logger";
 
 export class ErrorMiddleware {
-  static handle(error: Error, req: Request, res: Response, next: NextFunction) {
+  static handle(error: Error, req: Request, res: Response, _next: NextFunction) {
     // Log detailed error information
     logger.error("Error occurred:", {
       error: error.message,
@@ -21,6 +22,22 @@ export class ErrorMiddleware {
       user: (req as any).user?.id,
       timestamp: new Date().toISOString(),
     });
+
+
+        // Handle Multer errors
+    if (error instanceof multer.MulterError) {
+      if (error.code === 'LIMIT_FILE_SIZE') {
+        return ApiResponseHandler.error(res, 'File too large. Max size is 50MB.', HttpStatus.BAD_REQUEST);
+      }
+      if (error.code === 'LIMIT_FILE_COUNT') {
+        return ApiResponseHandler.error(res, 'Too many files. Max 10 files per post.', HttpStatus.BAD_REQUEST);
+      }
+      if (error.code === 'LIMIT_UNEXPECTED_FILE') {
+        return ApiResponseHandler.error(res, 'Unexpected field name. Use "media" for files.', HttpStatus.BAD_REQUEST);
+      }
+      return ApiResponseHandler.error(res, `Upload error: ${error.message}`, HttpStatus.BAD_REQUEST);
+    }
+    
 
     // Handle Prisma known errors
     if (error instanceof Prisma.PrismaClientKnownRequestError) {

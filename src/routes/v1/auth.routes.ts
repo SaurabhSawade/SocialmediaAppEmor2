@@ -10,6 +10,7 @@ import {
   forgotPasswordValidation,
   resetPasswordValidation,
   changePasswordValidation,
+  changeEmailValidation,
   logoutValidation,
   refreshTokenValidation,
   revokeSessionValidation,
@@ -28,6 +29,7 @@ router.post('/refresh-token', authRateLimiter, ValidationMiddleware.validate(ref
 
 // Protected routes
 router.post('/change-password', AuthMiddleware.authenticate, ValidationMiddleware.validate(changePasswordValidation), AuthController.changePassword);
+router.post('/change-email', AuthMiddleware.authenticate, ValidationMiddleware.validate(changeEmailValidation), AuthController.changeEmail);
 router.post('/logout', AuthMiddleware.authenticate, ValidationMiddleware.validate(logoutValidation), AuthController.logout);
 router.get('/sessions', AuthMiddleware.authenticate, AuthController.getSessions);
 router.delete('/sessions/:sessionId', AuthMiddleware.authenticate, ValidationMiddleware.validate(revokeSessionValidation), AuthController.revokeSession);

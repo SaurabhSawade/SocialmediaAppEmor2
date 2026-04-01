@@ -15,7 +15,8 @@ export class ProfileRepository {
   
   async findByUserId(userId: number) {
     try {
-      return await prisma.profile.findUnique({
+      console.log(`DEBUG: ProfileRepository.findByUserId called for userId: ${userId}`);
+      const result = await prisma.profile.findUnique({
         where: { userId },
         include: {
           user: {
@@ -38,6 +39,8 @@ export class ProfileRepository {
           },
         },
       });
+      console.log(`DEBUG: ProfileRepository result for userId ${userId}:`, result ? 'FOUND' : 'NOT_FOUND');
+      return result;
     } catch (error) {
       logger.error('Error in ProfileRepository.findByUserId:', error);
       throw error;
@@ -78,7 +81,7 @@ export class ProfileRepository {
     username?: string;
     fullName?: string;
     bio?: string;
-    avatarUrl?: string;
+    avatarUrl?: string | null;
     avatarKey?: string;
     website?: string;
     gender?: string;

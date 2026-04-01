@@ -3,7 +3,9 @@ import { Messages } from '../constants/messages';
 import { UpdateProfileDTO } from '../types/dto/user.dto';
 import { Helpers } from '../utils/helpers';
 import logger from '../config/logger';
-
+import path from 'path';
+import fs from 'fs';
+import { ImageProcessor } from '../utils/image-processor'
 export class ProfileService {
   private static instance: ProfileService;
   
@@ -122,9 +124,60 @@ export class ProfileService {
         followersCount: profile.user._count.followers,
         followingCount: profile.user._count.following,
       },
-      createdAt: profile.user.createdAt,
-      lastLoginAt: profile.user.lastLoginAt,
-    };
+        createdAt: profile.user.createdAt,
+        lastLoginAt: profile.user.lastLoginAt,
+      };
+    }
+  
+    async uploadAvatar(userId: number, file: Express.Multer.File): Promise<{ avatarUrl: string; message: string }> {
+    try {
+      // Fetch the current avatar before updating to avoid deleting the newly uploaded image.
+      const currentProfile = await ProfileRepository.findByUserId(userId);
+      const oldAvatarUrl = currentProfile?.avatarUrl;
+
+      const uploadDir = path.join(process.cwd(), 'uploads', 'avatars');
+      const processedFilename = `${userId}_${Date.now()}.jpg`;
+      const processedPath = path.join(uploadDir, processedFilename);
+
+      // Process and optimize image
+      await ImageProcessor.processAvatar(file.path, processedPath);
+
+      const avatarUrl = `/uploads/avatars/${processedFilename}`;
+
+      // Update profile with new avatar
+      await ProfileRepository.update(userId, { avatarUrl });
+
+      // Delete old avatar if exists and is not the same as the newly uploaded one
+      if (oldAvatarUrl && oldAvatarUrl !== avatarUrl) {
+        const oldPath = path.join(process.cwd(), oldAvatarUrl);
+        if (fs.existsSync(oldPath)) {
+          fs.unlinkSync(oldPath);
+        }
+      }
+
+      return {
+        message: 'Avatar uploaded successfully',
+        avatarUrl,
+      };
+    } catch (error) {
+      logger.error('Error uploading avatar:', error);
+      throw new Error('Failed to upload avatar');
+    }
+  }
+  
+  async removeAvatar(userId: number): Promise<{ message: string }> {
+    const profile = await ProfileRepository.findByUserId(userId);
+    
+    if (profile?.avatarUrl) {
+      const avatarPath = path.join(process.cwd(), profile.avatarUrl);
+      if (fs.existsSync(avatarPath)) {
+        fs.unlinkSync(avatarPath);
+      }
+    }
+    
+    await ProfileRepository.update(userId, { avatarUrl: null });
+    
+    return { message: 'Avatar removed successfully' };
   }
 }
 

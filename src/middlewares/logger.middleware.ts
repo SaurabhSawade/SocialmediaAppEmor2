@@ -8,12 +8,12 @@ export const requestLogger = (
 ) => {
   const start = Date.now();
 
-  // Log request
-  logger.debug(`${req.method} ${req.url} - Request received`, {
+  // Log incoming request
+  logger.info(`📨 ${req.method} ${req.path}`, {
     method: req.method,
-    url: req.url,
+    path: req.path,
+    query: Object.keys(req.query).length ? req.query : undefined,
     ip: req.ip,
-    userAgent: req.get("user-agent"),
   });
 
   // Log response on finish
@@ -24,18 +24,21 @@ export const requestLogger = (
     const logLevel =
       statusCode >= 500 ? "error" : statusCode >= 400 ? "warn" : "info";
 
-    logger[logLevel](
-      `${req.method} ${req.url} - ${statusCode} - ${duration}ms`,
-      {
-        method: req.method,
-        url: req.url,
-        status: statusCode,
-        duration: `${duration}ms`,
-        ip: req.ip,
-        userAgent: req.get("user-agent"),
-        userId: (req as any).user?.id,
-      },
-    );
+    const statusIcon = 
+      statusCode >= 500 ? "❌" :
+      statusCode >= 400 ? "⚠️" :
+      statusCode >= 300 ? "📍" : "✅";
+
+    const logMessage = `${statusIcon} ${req.method} ${req.path} - ${statusCode} ${duration}ms`;
+
+    logger[logLevel](logMessage, {
+      method: req.method,
+      path: req.path,
+      status: statusCode,
+      duration: `${duration}ms`,
+      ip: req.ip,
+      userId: (req as any).user?.id,
+    });
   });
 
   next();

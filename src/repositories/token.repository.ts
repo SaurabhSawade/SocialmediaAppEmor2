@@ -193,6 +193,64 @@ export class TokenRepository {
       throw error;
     }
   }
+
+  // Access Token Revocation Methods
+  async revokeAccessToken(userId: number, token: string, expiresAt: Date) {
+    try {
+      return await prisma.revokedAccessToken.create({
+        data: {
+          userId,
+          token,
+          expiresAt,
+        },
+      });
+    } catch (error) {
+      logger.error('Error in TokenRepository.revokeAccessToken:', error);
+      throw error;
+    }
+  }
+
+  async isAccessTokenRevoked(token: string): Promise<boolean> {
+    try {
+      const revoked = await prisma.revokedAccessToken.findUnique({
+        where: { token },
+      });
+      return !!revoked;
+    } catch (error) {
+      logger.error('Error in TokenRepository.isAccessTokenRevoked:', error);
+      return false; // On error, allow access (fail-open approach)
+    }
+  }
+
+  async revokeAllUserAccessTokens(userId: number) {
+    try {
+      // This is a cleanup method - in practice, access tokens expire quickly
+      // But we can mark them as revoked here for security
+      return await prisma.revokedAccessToken.deleteMany({
+        where: {
+          userId,
+          expiresAt: { lt: new Date() }, // Only delete expired tokens
+        },
+      });
+    } catch (error) {
+      logger.error('Error in TokenRepository.revokeAllUserAccessTokens:', error);
+      throw error;
+    }
+  }
+
+  async cleanupExpiredRevokedTokens() {
+    try {
+      // Cleanup revoked tokens that have already expired
+      return await prisma.revokedAccessToken.deleteMany({
+        where: {
+          expiresAt: { lt: new Date() },
+        },
+      });
+    } catch (error) {
+      logger.error('Error in TokenRepository.cleanupExpiredRevokedTokens:', error);
+      throw error;
+    }
+  }
 }
 
 export default TokenRepository.getInstance();

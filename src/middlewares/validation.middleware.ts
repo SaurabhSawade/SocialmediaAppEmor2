@@ -2,11 +2,10 @@ import { Request, Response, NextFunction } from "express";
 import { validationResult, ValidationChain } from "express-validator";
 import { ApiResponseHandler } from "../utils/api-response";
 import { HttpStatus } from "../constants/http-status";
-import { Messages } from "../constants/messages";
 
 export class ValidationMiddleware {
   static validate(validations: ValidationChain[]) {
-    return async (req: Request, res: Response, next: NextFunction) => {
+    return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
       try {
         // Run all validations
         await Promise.all(validations.map((validation) => validation.run(req)));
@@ -18,38 +17,28 @@ export class ValidationMiddleware {
           return next();
         }
 
-        // Format errors properly
-        const formattedErrors = errors.array().map((error: any) => {
-          return {
-            field: error.param || error.path || "unknown",
-            message: error.msg,
-            location: error.location || "body",
-          };
-        });
+        // Get the first error message
+        const firstError = errors.array()[0];
+        const errorMessage = firstError?.msg || "Validation failed";
 
-        // Debug log (very useful during development)
-        console.log("VALIDATION ERRORS:", errors.array());
+        // Debug log in development
+        if (process.env.NODE_ENV === "development") {
+          console.log("VALIDATION ERROR:", firstError);
+        }
 
-        // Return structured response with first error message as main message
-        const firstError = formattedErrors[0];
-        return ApiResponseHandler.error(
-          res,
-          firstError.message,
-          HttpStatus.UNPROCESSABLE_ENTITY,
-        );
-      } catch (err) {
+        // Return error response with only the first error message
+        ApiResponseHandler.error(res, errorMessage, HttpStatus.UNPROCESSABLE_ENTITY);
+      } catch (error) {
         // Safety fallback if validation itself crashes
-        console.error("Validation Middleware Crash:", err);
+        console.error("Validation Middleware Crash:", error);
 
-        return ApiResponseHandler.error(
-          res,
-          "Validation processing failed",
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        );
+        const errorMessage = error instanceof Error ? error.message : "Validation processing failed";
+        ApiResponseHandler.error(res, errorMessage, HttpStatus.INTERNAL_SERVER_ERROR);
       }
     };
   }
 }
+  
 
 // import { Request, Response, NextFunction } from "express";
 // import { validationResult, ValidationChain } from "express-validator";

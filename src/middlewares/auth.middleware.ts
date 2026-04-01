@@ -6,6 +6,7 @@ import { HttpStatus } from "../constants/http-status";
 import { Messages } from "../constants/messages";
 import env from "../config/env";
 import logger from "../config/logger";
+import TokenRepository from "../repositories/token.repository";
 
 export class AuthMiddleware {
   static async authenticate(
@@ -26,6 +27,17 @@ export class AuthMiddleware {
 
       const token = authHeader.split(" ")[1];
       const decoded = jwt.verify(token, env.JWT_ACCESS_SECRET) as any;
+
+      // Check if access token is revoked
+      const isRevoked = await TokenRepository.isAccessTokenRevoked(token);
+      if (isRevoked) {
+        logger.warn(`Access to revoked token for user ${decoded.userId}`);
+        return ApiResponseHandler.error(
+          res,
+          "Token has been revoked. Please login again.",
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
 
       req.user = {
         id: decoded.userId,

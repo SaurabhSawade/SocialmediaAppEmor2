@@ -41,6 +41,7 @@ model User {
   posts   Post[]
   comments Comment[]
   likes   Like[]
+  savedPosts SavedPost[]
   otps    OTP[]
 
   tokens  Token[]      
@@ -113,31 +114,37 @@ model Follow {
 }
 
 model Post {
-  id       Int     @id @default(autoincrement())
-  authorId Int
-  caption  String? @db.Text
-
-  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
-
-  media    Media[]
-  comments Comment[]
-  likes    Like[]
-
+  id        Int      @id @default(autoincrement())
+  authorId  Int
+  caption   String?  @db.Text
+  location  String?  @db.VarChar(100)
+  isArchived Boolean @default(false)
+  
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  media     Media[]
+  comments  Comment[]
+  likes     Like[]
+  savedBy   SavedPost[]
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
+  
   @@index([authorId])
+  @@index([createdAt])
 }
 
 model Media {
-  id     Int       @id @default(autoincrement())
-  postId Int
-  url    String    @db.VarChar(255)
-  type   MediaType
-  order  Int       @default(0)
-
+  id        Int       @id @default(autoincrement())
+  postId    Int
+  url       String    @db.VarChar(500)
+  thumbnailUrl String? @db.VarChar(500)
+  type      MediaType
+  order     Int       @default(0)
+  fileSize  Int?      // Size in bytes
+  mimeType  String?   @db.VarChar(100)
+  
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-
+  
   @@index([postId])
 }
 
@@ -181,6 +188,21 @@ model Like {
   @@index([userId])
   @@index([postId])
   @@index([commentId])
+}
+
+model SavedPost {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  postId    Int
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+  @@index([userId])
+  @@index([postId])
 }
 
 model Conversation {
@@ -270,3 +292,18 @@ enum TokenType {
   PASSWORD_RESET
   EMAIL_VERIFICATION
 }
+
+model RevokedAccessToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  token     String   @unique @db.VarChar(500)
+  expiresAt DateTime
+  
+  createdAt DateTime @default(now())
+  
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+

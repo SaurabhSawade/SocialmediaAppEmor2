@@ -52,6 +52,34 @@ export class ProfileController {
     }
   }
 
+    static async uploadAvatar(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user!.id;
+      const file = req.file;
+      
+      if (!file) {
+        return ApiResponseHandler.error(res, 'No file uploaded', 400);
+      }
+      
+      const result = await ProfileService.uploadAvatar(userId, file);
+      
+      ApiResponseHandler.success(res, result.message, { avatarUrl: result.avatarUrl });
+    } catch (error) {
+      next(error);
+    }
+  }
+  
+  static async removeAvatar(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user!.id;
+      const result = await ProfileService.removeAvatar(userId);
+      
+      ApiResponseHandler.success(res, result.message);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   /**
    * Check username availability
    * GET /api/v1/profile/check-username/:username

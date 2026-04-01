@@ -151,7 +151,7 @@ export class UserController {
    * Get public profile by username
    * GET /api/v1/users/:username
    */
-  static async getPublicProfile(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+  static async getPublicProfile(req: any, res: Response, next: NextFunction): Promise<void> {
     try {
       const username = Array.isArray(req.params.username) ? req.params.username[0] : req.params.username;
       const currentUserId = req.user?.id;

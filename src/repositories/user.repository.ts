@@ -158,6 +158,18 @@ export class UserRepository {
     }
   }
 
+  async updateEmail(id: number, email: string) {
+    try {
+      return await prisma.user.update({
+        where: { id },
+        data: { email },
+      });
+    } catch (error) {
+      logger.error("Error in UserRepository.updateEmail:", error);
+      throw error;
+    }
+  }
+
   async verifyUser(id: number) {
     try {
       return await prisma.user.update({

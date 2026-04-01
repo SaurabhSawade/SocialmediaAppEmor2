@@ -187,6 +187,26 @@ export class AuthController {
   }
 
   /**
+   * Change email for authenticated user
+   * POST /api/v1/auth/change-email
+   */
+  static async changeEmail(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    try {
+      const userId = req.user!.id;
+      const { newEmail, password }: { newEmail: string; password: string } = req.body;
+      const result = await AuthService.changeEmail(userId, password, newEmail);
+
+      ApiResponseHandler.success(res, result.message);
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  /**
    * Refresh access token
    * POST /api/v1/auth/refresh-token
    */
@@ -218,9 +238,16 @@ export class AuthController {
       
       if (!refreshToken) {
         ApiResponseHandler.error(res, 'Refresh token required', HttpStatus.BAD_REQUEST);
+        return;
       }
+
+      // Extract access token from Authorization header
+      const authHeader = req.headers.authorization;
+      const accessToken = authHeader?.startsWith('Bearer ') 
+        ? authHeader.split(' ')[1] 
+        : undefined;
       
-      const result = await AuthService.logout(refreshToken, logoutAll);
+      const result = await AuthService.logout(refreshToken, logoutAll, accessToken);
       
       ApiResponseHandler.success(res, result.message, { revokedTokens: result.revokedTokens });
     } catch (error) {
