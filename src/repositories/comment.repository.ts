@@ -1,5 +1,6 @@
 import prisma from '../prisma/client';
 import logger from '../config/logger';
+import { AppError } from "../utils/app-error";
 
 export class CommentRepository {
   private static instance: CommentRepository;
@@ -125,7 +126,7 @@ export class CommentRepository {
       });
       
       if (!comment) {
-        throw new Error('Comment not found or unauthorized');
+        return new AppError('Comment not found or unauthorized');
       }
       
       return await prisma.comment.update({
@@ -150,7 +151,7 @@ export class CommentRepository {
       });
       
       if (!comment) {
-        throw new Error('Comment not found or unauthorized');
+        return new AppError('Comment not found or unauthorized');
       }
       
       return await prisma.comment.delete({

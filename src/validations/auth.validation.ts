@@ -1,10 +1,11 @@
 import { body, param, ValidationChain } from "express-validator";
 import { Helpers } from "../utils/helpers";
+import { AppError } from "../utils/app-error";
 
 export const registerValidation: ValidationChain[] = [
   body().custom((value, { req }) => {
     if (!req.body.email && !req.body.phone) {
-      throw new Error("Either email or phone is required");
+      return new AppError("Either email or phone is required");
     }
     return true;
   }),
@@ -91,12 +92,12 @@ export const resetPasswordValidation: ValidationChain[] = [
       if (value.includes('@')) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(value)) {
-          throw new Error("Invalid email format");
+          return new AppError("Invalid email format");
         }
       } else {
         // Phone validation
         if (!/^[0-9]{10,15}$/.test(value)) {
-          throw new Error("Phone must be 10-15 digits");
+          return new AppError("Phone must be 10-15 digits");
         }
       }
       return true;
@@ -128,7 +129,7 @@ export const resetPasswordValidation: ValidationChain[] = [
     .withMessage("Confirm password is required")
     .custom((value, { req }) => {
       if (value !== req.body.newPassword) {
-        throw new Error("Passwords do not match");
+        return new AppError("Passwords do not match");
       }
       return true;
     }),
@@ -163,7 +164,7 @@ export const resetPasswordValidation: ValidationChain[] = [
 
 //   body("confirmPassword").custom((value, { req }) => {
 //     if (value !== req.body.newPassword) {
-//       throw new Error("Passwords do not match");
+//       return new AppError("Passwords do not match");
 //     }
 //     return true;
 //   }),
@@ -184,7 +185,7 @@ export const changePasswordValidation: ValidationChain[] = [
 
   body("confirmPassword").custom((value, { req }) => {
     if (value !== req.body.newPassword) {
-      throw new Error("Passwords do not match");
+      return new AppError("Passwords do not match");
     }
     return true;
   }),

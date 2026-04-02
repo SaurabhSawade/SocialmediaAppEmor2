@@ -1,6 +1,3 @@
-
-
-
 import { Response } from "express";
 import { HttpStatus } from "../constants/http-status";
 
@@ -16,7 +13,7 @@ export class ApiResponseHandler {
       statusCode,
       message,
       data,
-      timestamp: new Date().toISOString(),
+      // timestamp: new Date().toISOString(),
     });
   }
 
@@ -30,7 +27,7 @@ export class ApiResponseHandler {
       success: false,
       statusCode,
       message,
-      timestamp: new Date().toISOString(),
+      // timestamp: new Date().toISOString(),
     };
 
     if (error && process.env.NODE_ENV === "development") {

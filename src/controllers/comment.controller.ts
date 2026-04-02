@@ -1,4 +1,4 @@
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import CommentService from '../services/comment.service';
 import { ApiResponseHandler } from '../utils/api-response';
 import { AuthenticatedRequest } from '../types/request';

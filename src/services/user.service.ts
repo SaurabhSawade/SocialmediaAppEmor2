@@ -7,6 +7,7 @@ import { UpdateProfileDTO, UpdateSettingsDTO, UserProfileResponseDTO } from '../
 import { Helpers } from '../utils/helpers';
 import env from '../config/env';
 import bcrypt from 'bcryptjs';
+import { AppError } from "../utils/app-error";
 
 export class UserService {
   private static instance: UserService;
@@ -34,7 +35,7 @@ export class UserService {
     
     if (!profile) {
       console.error(`DEBUG: Profile not found for userId: ${userId}`);
-      throw new Error(Messages.USER_NOT_FOUND);
+      throw new AppError(Messages.USER_NOT_FOUND);
     }
     
     return {
@@ -59,11 +60,11 @@ export class UserService {
     };
   }
   
-  async updateProfile(userId: number, data: UpdateProfileDTO) {
+  async updateProfile(userId: number, data: UpdateProfileDTO): Promise<{ message: string; profile: { username: string; fullName: string | null; bio: string | null; avatarUrl: string | null; website: string | null; gender: string | null; isPrivate: boolean; emailNotifications: boolean; pushNotifications: boolean; } }> {
     // Validate username if provided
     if (data.username) {
       if (!Helpers.isValidUsername(data.username)) {
-        throw new Error('Invalid username format');
+        throw new AppError('Invalid username format');
       }
     }
     
@@ -71,19 +72,23 @@ export class UserService {
     if (data.website) {
       const urlPattern = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/;
       if (!urlPattern.test(data.website)) {
-        throw new Error('Invalid website URL');
+        throw new AppError('Invalid website URL');
       }
     }
     
     // Validate gender
     if (data.gender && !['male', 'female', 'other', 'prefer_not_to_say'].includes(data.gender)) {
-      throw new Error('Invalid gender value');
+      throw new AppError('Invalid gender value');
     }
     
     const profile = await ProfileRepository.update(userId, data);
     
+    if (profile instanceof AppError) {
+      throw profile;
+    }
+    
     if (!profile) {
-      throw new Error(Messages.PROFILE_NOT_FOUND);
+      throw new AppError(Messages.PROFILE_NOT_FOUND);
     }
     
     return {
@@ -125,11 +130,15 @@ export class UserService {
   async updateSettings(userId: number, data: UpdateSettingsDTO) {
     const profile = await ProfileRepository.update(userId, data);
     
+    if (profile instanceof AppError) {
+      throw profile;
+    }
+    
     return {
       message: 'Settings updated successfully',
       settings: {
-        emailNotifications: profile?.emailNotifications,
-        pushNotifications: profile?.pushNotifications,
+        emailNotifications: profile.emailNotifications,
+        pushNotifications: profile.pushNotifications,
       },
     };
   }
@@ -138,22 +147,22 @@ export class UserService {
     // Verify password
     const user = await UserRepository.findById(userId);
     if (!user) {
-      throw new Error(Messages.USER_NOT_FOUND);
+      return new AppError(Messages.USER_NOT_FOUND);
     }
     
     const isValidPassword = await this.comparePassword(password, user.password);
     if (!isValidPassword) {
-      throw new Error('Invalid password');
+      return new AppError('Invalid password');
     }
     
     if (user.email === newEmail) {
-      throw new Error('New email cannot be same as current email');
+      return new AppError('New email cannot be same as current email');
     }
     
     // Check if email is already taken
     const existingUser = await UserRepository.findByEmail(newEmail);
     if (existingUser && existingUser.id !== userId) {
-      throw new Error(Messages.EMAIL_EXISTS);
+      return new AppError(Messages.EMAIL_EXISTS);
     }
     
     // If OTP provided, verify it
@@ -162,7 +171,7 @@ export class UserService {
     if (otp) {
       const isValidOTP = await OTPService.verifyOTP(userId, otp, OTPType.EMAIL_VERIFICATION);
       if (!isValidOTP) {
-        throw new Error(Messages.INVALID_OTP);
+        return new AppError(Messages.INVALID_OTP);
       }
 
       await UserRepository.update(userId, { email: newEmail });
@@ -181,21 +190,21 @@ export class UserService {
     // Similar to changeEmail logic
     const user = await UserRepository.findById(userId);
     if (!user) {
-      throw new Error(Messages.USER_NOT_FOUND);
+      return new AppError(Messages.USER_NOT_FOUND);
     }
     
     const isValidPassword = await this.comparePassword(password, user.password);
     if (!isValidPassword) {
-      throw new Error('Invalid password');
+      return new AppError('Invalid password');
     }
     
     if (user.phone === newPhone) {
-      throw new Error('New phone cannot be same as current phone');
+      return new AppError('New phone cannot be same as current phone');
     }
     
     const existingUser = await UserRepository.findByPhone(newPhone);
     if (existingUser && existingUser.id !== userId) {
-      throw new Error(Messages.PHONE_EXISTS);
+      return new AppError(Messages.PHONE_EXISTS);
     }
     
     const OTPService = (await import('./otp.service')).default;
@@ -203,7 +212,7 @@ export class UserService {
     if (otp) {
       const isValidOTP = await OTPService.verifyOTP(userId, otp, OTPType.PHONE_VERIFICATION);
       if (!isValidOTP) {
-        throw new Error(Messages.INVALID_OTP);
+        return new AppError(Messages.INVALID_OTP);
       }
 
       await UserRepository.update(userId, { phone: newPhone });
@@ -222,12 +231,12 @@ export class UserService {
     // Verify password before soft delete
     const user = await UserRepository.findById(userId);
     if (!user) {
-      throw new Error(Messages.USER_NOT_FOUND);
+      return new AppError(Messages.USER_NOT_FOUND);
     }
     
     const isValidPassword = await this.comparePassword(password, user.password);
     if (!isValidPassword) {
-      throw new Error('Invalid password');
+      return new AppError('Invalid password');
     }
     
     // Soft delete user
@@ -245,11 +254,11 @@ export class UserService {
     const user = await UserRepository.findById(userId, true);
     
     if (!user) {
-      throw new Error(Messages.USER_NOT_FOUND);
+      return new AppError(Messages.USER_NOT_FOUND);
     }
     
     if (!user.deletedAt) {
-      throw new Error('Account is not deleted');
+      return new AppError('Account is not deleted');
     }
     
     await UserRepository.update(userId, { deletedAt: null });
@@ -261,7 +270,7 @@ export class UserService {
     const profile = await ProfileRepository.getProfileWithFollowers(username, currentUserId);
     
     if (!profile) {
-      throw new Error(Messages.PROFILE_NOT_FOUND);
+      return new AppError(Messages.PROFILE_NOT_FOUND);
     }
     
     // If account is private and current user doesn't follow, show limited info

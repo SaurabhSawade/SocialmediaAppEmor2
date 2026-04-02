@@ -3,6 +3,7 @@ import UserService from '../services/user.service';
 import { ApiResponseHandler } from '../utils/api-response';
 import { AuthenticatedRequest } from '../types/request';
 import { UpdateProfileDTO, UpdateSettingsDTO } from '../types/dto/user.dto';
+import { AppError } from '../utils/app-error';
 
 export class UserController {
   /**
@@ -13,6 +14,10 @@ export class UserController {
     try {
       const userId = req.user!.id;
       const profile = await UserService.getUserProfile(userId);
+      
+      if (profile instanceof AppError) {
+        throw profile;
+      }
       
       ApiResponseHandler.success(res, 'Profile retrieved successfully', profile);
     } catch (error) {
@@ -30,6 +35,10 @@ export class UserController {
       const updateData: UpdateProfileDTO = req.body;
       
       const result = await UserService.updateProfile(userId, updateData);
+      
+      if (result instanceof AppError) {
+        throw result;
+      }
       
       ApiResponseHandler.success(res, result.message, result.profile);
     } catch (error) {
@@ -157,6 +166,10 @@ export class UserController {
       const currentUserId = req.user?.id;
       
       const profile = await UserService.getPublicProfile(username, currentUserId);
+      
+      if (profile instanceof AppError) {
+        throw profile;
+      }
       
       ApiResponseHandler.success(res, 'Profile retrieved successfully', profile);
     } catch (error) {

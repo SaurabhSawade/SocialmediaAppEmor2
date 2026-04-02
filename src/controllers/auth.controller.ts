@@ -4,6 +4,7 @@ import { ApiResponseHandler } from "../utils/api-response";
 import { HttpStatus } from "../constants/http-status";
 import { Messages } from "../constants/messages";
 import { AuthenticatedRequest } from "../types/request";
+import { AppError } from "../utils/app-error";
 import {
   RegisterDTO,
   LoginDTO,
@@ -146,7 +147,7 @@ export class AuthController {
       const { identifier, otp, newPassword }: ResetPasswordDTO = req.body;
 
       if (!identifier || !otp || !newPassword) {
-        throw new Error('Missing required fields: identifier, otp, and newPassword are required');
+        throw new AppError('Missing required fields: identifier, otp, and newPassword are required');
       }
 
       const result = await AuthService.resetPassword(

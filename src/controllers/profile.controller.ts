@@ -3,6 +3,7 @@ import ProfileService from '../services/profile.service';
 import { ApiResponseHandler } from '../utils/api-response';
 import { AuthenticatedRequest } from '../types/request';
 import { UpdateProfileDTO } from '../types/dto/user.dto';
+import { AppError } from '../utils/app-error';
 
 export class ProfileController {
   /**
@@ -15,6 +16,10 @@ export class ProfileController {
       const updateData: UpdateProfileDTO = req.body;
       
       const result = await ProfileService.updateProfile(userId, updateData);
+      
+      if (result instanceof AppError) {
+        throw result;
+      }
       
       ApiResponseHandler.success(res, result.message, result.profile);
     } catch (error) {

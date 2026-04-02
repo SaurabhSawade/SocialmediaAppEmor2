@@ -2,6 +2,7 @@ import nodemailer from "nodemailer";
 import env from "../config/env";
 import { OTPType } from "../constants/enums";
 import logger from "../config/logger";
+import { AppError } from "../utils/app-error";
 
 export class EmailService {
   private static instance: EmailService;
@@ -115,7 +116,7 @@ export class EmailService {
 
       // Check if transporter is available
       if (!this.transporter) {
-        throw new Error('Email service is not configured. Please check SMTP settings in .env');
+        throw new AppError('Email service is not configured. Please check SMTP settings in .env');
       }
 
       // Send real email
@@ -152,7 +153,7 @@ export class EmailService {
         return;
       }
       
-      throw new Error("Failed to send OTP email. Please try again later.");
+      throw new AppError("Failed to send OTP email. Please try again later.");
     }
   }
 
@@ -190,7 +191,7 @@ export class EmailService {
 
       // Check if transporter is available
       if (!this.transporter) {
-        throw new Error('Email service is not configured. Please check SMTP settings in .env');
+        throw new AppError('Email service is not configured. Please check SMTP settings in .env');
       }
 
       // Send real email
@@ -224,7 +225,7 @@ export class EmailService {
         return;
       }
 
-      throw new Error("Failed to send email. Please try again later.");
+      throw new AppError("Failed to send email. Please try again later.");
     }
   }
 }
@@ -317,7 +318,7 @@ export default EmailService.getInstance();
 //       logger.info(`OTP email sent to ${email} for type: ${type}`);
 //     } catch (error) {
 //       logger.error("Failed to send OTP email:", error);
-//       throw new Error("Failed to send OTP email");
+//       return new AppError("Failed to send OTP email");
 //     }
 //   }
 // }

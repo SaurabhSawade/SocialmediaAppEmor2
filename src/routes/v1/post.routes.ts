@@ -11,12 +11,13 @@ import {
 
 const router = Router();
 
-// All post routes require authentication
-router.use(AuthMiddleware.authenticate);
+// All post routes require authentication but not follow in industry
+// router.use(AuthMiddleware.authenticate);
 
 router.post(
   '/',
   uploadMultipleMedia.array('media', 10),
+  AuthMiddleware.authenticate,
   ValidationMiddleware.validate(createPostValidation),
   PostController.createPost
 );
@@ -24,16 +25,18 @@ router.post(
 router.get(
   '/feed', 
   ValidationMiddleware.validate(getFeedValidation),
+  AuthMiddleware.authenticate,
   PostController.getFeed
 );
 
-router.get('/:postId', PostController.getPost);
+router.get('/:postId',AuthMiddleware.authenticate, PostController.getPost);
 router.put('/:postId', 
   ValidationMiddleware.validate(updatePostValidation),
+  AuthMiddleware.authenticate,
   PostController.updatePost
 );
-router.delete('/:postId', PostController.deletePost);
-router.post('/:postId/archive', PostController.archivePost);
-router.post('/:postId/like', PostController.likePost);
+router.delete('/:postId', AuthMiddleware.authenticate, PostController.deletePost);
+router.post('/:postId/archive', AuthMiddleware.authenticate, PostController.archivePost);
+router.post('/:postId/like', AuthMiddleware.authenticate, PostController.likePost);
 
 export default router;

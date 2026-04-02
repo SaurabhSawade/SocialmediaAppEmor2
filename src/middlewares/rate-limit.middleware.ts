@@ -16,19 +16,19 @@ export const rateLimiter = rateLimit({
 });
 
 export const authRateLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 50, // 5 attempts
+  windowMs: 1 * 60 * 1000, // 1 minute // do it in env
+  max: 50, // 5 attempts // do this in env
   skipSuccessfulRequests: true,
   message: {
     success: false,
     message:
-      "Too many authentication attempts. Please try again after 15 minutes.",
+      "Too many authentication attempts. Please try again after 15 minutes.",//put message in constants
     timestamp: new Date().toISOString(),
   },
   standardHeaders: true,
   legacyHeaders: false,
 });
-
+// same as above
 export const apiRateLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
   max: 60, // 60 requests per minute

@@ -6,6 +6,7 @@ import logger from '../config/logger';
 import path from 'path';
 import fs from 'fs';
 import { ImageProcessor } from '../utils/image-processor'
+import { AppError } from "../utils/app-error";
 export class ProfileService {
   private static instance: ProfileService;
   
@@ -22,32 +23,36 @@ export class ProfileService {
     // Validate username if provided
     if (data.username) {
       if (!Helpers.isValidUsername(data.username)) {
-        throw new Error('Invalid username format. Username can only contain letters, numbers, underscores, and dots.');
+        return new AppError('Invalid username format. Username can only contain letters, numbers, underscores, and dots.');
       }
       
       const isAvailable = await ProfileRepository.checkUsernameAvailability(data.username, userId);
       if (!isAvailable) {
-        throw new Error(Messages.USERNAME_EXISTS);
+        return new AppError(Messages.USERNAME_EXISTS);
       }
     }
     
     // Validate website URL if provided
     if (data.website) {
-      const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+      const urlPattern = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/;
       if (!urlPattern.test(data.website)) {
-        throw new Error('Invalid website URL. Please provide a valid URL (e.g., https://example.com)');
+        return new AppError('Invalid website URL. Please provide a valid URL (e.g., https://example.com)');
       }
     }
     
     // Validate gender
     if (data.gender && !['male', 'female', 'other', 'prefer_not_to_say'].includes(data.gender)) {
-      throw new Error('Invalid gender value. Allowed values: male, female, other, prefer_not_to_say');
+      return new AppError('Invalid gender value. Allowed values: male, female, other, prefer_not_to_say');
     }
     
     const profile = await ProfileRepository.update(userId, data);
     
+    if (profile instanceof AppError) {
+      return profile;
+    }
+    
     if (!profile) {
-      throw new Error(Messages.PROFILE_NOT_FOUND);
+      return new AppError(Messages.PROFILE_NOT_FOUND);
     }
     
     return {
@@ -72,7 +77,7 @@ export class ProfileService {
     const profile = await ProfileRepository.findByUsername(username);
     
     if (!profile) {
-      throw new Error(Messages.PROFILE_NOT_FOUND);
+      return new AppError(Messages.PROFILE_NOT_FOUND);
     }
     
     return {
@@ -101,7 +106,7 @@ export class ProfileService {
     const profile = await ProfileRepository.findByUserId(userId);
     
     if (!profile) {
-      throw new Error(Messages.PROFILE_NOT_FOUND);
+      return new AppError(Messages.PROFILE_NOT_FOUND);
     }
     
     return {
@@ -161,7 +166,7 @@ export class ProfileService {
       };
     } catch (error) {
       logger.error('Error uploading avatar:', error);
-      throw new Error('Failed to upload avatar');
+      throw new AppError('Failed to upload avatar');
     }
   }
   

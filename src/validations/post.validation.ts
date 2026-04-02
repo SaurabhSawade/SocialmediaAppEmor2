@@ -1,4 +1,5 @@
 import { body, query } from 'express-validator';
+import { AppError } from "../utils/app-error";
 
 export const createPostValidation = [
   body('data')
@@ -8,7 +9,7 @@ export const createPostValidation = [
         try {
           JSON.parse(value);
         } catch (e) {
-          throw new Error('Invalid JSON data');
+          return new AppError('Invalid JSON data');
         }
       }
       return true;

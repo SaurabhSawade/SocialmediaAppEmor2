@@ -6,6 +6,7 @@ import { MediaType } from '../constants/enums';
 import logger from '../config/logger';
 import path from 'path';
 import fs from 'fs';
+import { AppError } from "../utils/app-error";
 
 export class PostService {
   private static instance: PostService;
@@ -22,7 +23,7 @@ export class PostService {
   async createPost(userId: number, data: CreatePostDTO, files?: Express.Multer.File[]): Promise<PostResponseDTO> {
     // Validate media
     if ((!data.media || data.media.length === 0) && (!files || files.length === 0)) {
-      throw new Error('At least one media file is required');
+      throw new AppError('At least one media file is required');
     }
     
     const mediaItems = [];
@@ -57,7 +58,7 @@ export class PostService {
     }
     
     if (mediaItems.length > 10) {
-      throw new Error('Maximum 10 media files per post');
+      throw new AppError('Maximum 10 media files per post');
     }
     
     const post = await PostRepository.create({
@@ -74,7 +75,7 @@ export class PostService {
     const post = await PostRepository.findById(postId, userId);
     
     if (!post) {
-      throw new Error('Post not found');
+      throw new AppError('Post not found');
     }
     
     return this.formatPostResponse(post, userId);
@@ -100,11 +101,11 @@ export class PostService {
     const post = await PostRepository.findById(postId);
     
     if (!post) {
-      throw new Error('Post not found');
+      throw new AppError('Post not found');
     }
     
     if (post.authorId !== userId) {
-      throw new Error('Unauthorized to update this post');
+      throw new AppError('Unauthorized to update this post');
     }
     
     const updatedPost = await PostRepository.update(postId, data);
@@ -116,7 +117,7 @@ export class PostService {
     const post = await PostRepository.findById(postId);
     
     if (!post) {
-      throw new Error('Post not found');
+      return new AppError('Post not found');
     }
     
     // Delete associated media files
@@ -138,11 +139,11 @@ export class PostService {
     const post = await PostRepository.findById(postId);
     
     if (!post) {
-      throw new Error('Post not found');
+      return new AppError('Post not found');
     }
     
     if (post.authorId !== userId) {
-      throw new Error('Unauthorized to archive this post');
+      return new AppError('Unauthorized to archive this post');
     }
     
     await PostRepository.archive(postId);
@@ -154,7 +155,7 @@ export class PostService {
     const post = await PostRepository.findById(postId);
     
     if (!post) {
-      throw new Error('Post not found');
+      throw new AppError('Post not found');
     }
     
     const { liked } = await LikeRepository.togglePostLike(userId, postId);

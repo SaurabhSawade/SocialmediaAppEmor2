@@ -2,6 +2,7 @@ import CommentRepository from '../repositories/comment.repository';
 import LikeRepository from '../repositories/like.repository';
 import { CreateCommentDTO, UpdateCommentDTO, CommentResponseDTO } from '../types/dto/comment.dto';
 import logger from '../config/logger';
+import { AppError } from "../utils/app-error";
 
 export class CommentService {
   private static instance: CommentService;
@@ -21,11 +22,11 @@ export class CommentService {
     data: CreateCommentDTO
   ): Promise<CommentResponseDTO> {
     if (!data.content || data.content.trim().length === 0) {
-      throw new Error('Comment content cannot be empty');
+      throw new AppError('Comment content cannot be empty');
     }
     
     if (data.content.length > 500) {
-      throw new Error('Comment cannot exceed 500 characters');
+      throw new AppError('Comment cannot exceed 500 characters');
     }
     
     const comment = await CommentRepository.create({
@@ -50,7 +51,7 @@ export class CommentService {
     data: UpdateCommentDTO
   ): Promise<CommentResponseDTO> {
     if (!data.content || data.content.trim().length === 0) {
-      throw new Error('Comment content cannot be empty');
+      throw new AppError('Comment content cannot be empty');
     }
     
     const updatedComment = await CommentRepository.update(commentId, data.content, userId);

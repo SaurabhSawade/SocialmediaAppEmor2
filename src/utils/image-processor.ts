@@ -2,6 +2,7 @@ import sharp from 'sharp';
 import fs from 'fs';
 import path from 'path';
 import logger from '../config/logger';
+import { AppError } from "./app-error";
 
 export class ImageProcessor {
   /**
@@ -23,7 +24,7 @@ export class ImageProcessor {
       return outputPath;
     } catch (error) {
       logger.error('Error processing avatar:', error);
-      throw new Error('Failed to process avatar image', { cause: error });
+      throw new AppError('Failed to process avatar image', { cause: error });
     }
   }
   
@@ -75,7 +76,7 @@ export class ImageProcessor {
       };
     } catch (error) {
       logger.error('Error processing post image:', error);
-      throw new Error('Failed to process post image', { cause: error });
+      throw new AppError('Failed to process post image', { cause: error });
     }
   }
   
