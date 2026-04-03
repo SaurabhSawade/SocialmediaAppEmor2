@@ -73,12 +73,10 @@ export class AdminRepository {
         where,
         include: {
           profile: true, 
-
           posts: {
             where: { deletedAt: null },
             include: {
               media: true,
-
               comments: {
                 where: { deletedAt: null, parentId: null },
                 include: {
@@ -98,13 +96,11 @@ export class AdminRepository {
                   },
                 },
               },
-
               _count: {
                 select: { likes: true, comments: true },
               },
             },
           },
-
           _count: {
             select: {
               followers: true,
@@ -113,11 +109,9 @@ export class AdminRepository {
             },
           },
         },
-
         orderBy: {
           [orderBy]: orderType,
         },
-
         skip,
         take: limit,
       });
@@ -135,30 +129,22 @@ export class AdminRepository {
           });
 
           const likesGiven = user._count.likes;
-
           const commentsCount = await prisma.comment.count({
             where: { userId: user.id, deletedAt: null },
           });
-
           const totalEngagement = likesReceived + likesGiven + commentsCount;
-
           return {
             id: user.id,
             email: user.email,
             phone: user.phone,
-
-            
             username: user.profile?.username,
             fullName: user.profile?.fullName,
             bio: user.profile?.bio,
             avatarUrl: user.profile?.avatarUrl,
-
             role: user.role,
             isVerified: user.isVerified,
             isActive: user.isActive,
-
             status: user.deletedAt ? 'deleted' : 'active',
-
             stats: {
               postsCount: user.posts.length,
               commentsCount,
@@ -168,7 +154,6 @@ export class AdminRepository {
               followingCount: user._count.following,
               totalEngagement,
             },
-
             posts: user.posts.map((post: any) => ({
               id: post.id,
               caption: post.caption,
@@ -178,7 +163,6 @@ export class AdminRepository {
               commentsCount: post._count.comments,
               isArchived: post.isArchived,
               createdAt: post.createdAt.toISOString(),
-
               comments: post.comments.map((comment: any) => ({
                 id: comment.id,
                 content: comment.content,

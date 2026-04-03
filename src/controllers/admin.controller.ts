@@ -47,11 +47,13 @@ export class AdminController {
         orderType: req.query.orderType as any,
       };
       
-      const { csv, filename } = await AdminService.exportUsersToCSV(query);
+      // const { csv, filename } = await AdminService.exportUsersToCSV(query);
+      const {filePath, filename} = await AdminService.exportUsersToCSV(query);
       //how to return here
       res.setHeader('Content-Type', 'text/csv');
       res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
-      res.send(csv);
+      res.sendFile(filePath);
+      res.download(filePath, filename);
     } catch (error) {
       logger.error('Error in exportUsersToCSV:', error);
       next(error);
