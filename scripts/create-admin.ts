@@ -18,7 +18,7 @@ async function createAdmin() {
         where: { email: adminEmail },
         data: { role: 'ADMIN' },
       });
-      console.log('✅ Updated existing user to ADMIN role');
+      console.log(' Updated existing user to ADMIN role');
       console.log(`   Email: ${adminEmail}`);
       return;
     }
@@ -39,12 +39,12 @@ async function createAdmin() {
       },
     });
     
-    console.log('✅ Admin user created successfully!');
+    console.log(' Admin user created successfully!');
     console.log(`   Email: ${admin.email}`);
     console.log(`   Password: Admin@123456`);
     console.log(`   Role: ${admin.role}`);
   } catch (error) {
-    console.error('❌ Error creating admin:', error);
+    console.error(' Error creating admin:', error);
   } finally {
     await prisma.$disconnect();
   }
