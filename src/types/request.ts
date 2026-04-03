@@ -5,5 +5,6 @@ export interface AuthenticatedRequest extends Request {
     id: number;
     email?: string | null;
     phone?: string | null;
+    role?: string;
   };
 }

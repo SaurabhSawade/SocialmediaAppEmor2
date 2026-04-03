@@ -43,6 +43,7 @@ export class AuthMiddleware {
         id: decoded.userId,
         email: decoded.email,
         phone: decoded.phone,
+        role: decoded.role || 'USER',
       };
 
       next();

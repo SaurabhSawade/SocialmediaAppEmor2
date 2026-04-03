@@ -8,6 +8,13 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// # ================= ENUMS =================
+
+enum Role {
+  USER
+  ADMIN
+}
+
 enum MediaType {
   IMAGE
   VIDEO
@@ -25,6 +32,15 @@ enum OTPType {
   PASSWORD_RESET
 }
 
+enum TokenType {
+  ACCESS
+  REFRESH
+  PASSWORD_RESET
+  EMAIL_VERIFICATION
+}
+
+// # ================= USER =================
+
 model User {
   id         Int      @id @default(autoincrement())
   email      String?  @unique @db.VarChar(100)
@@ -37,7 +53,10 @@ model User {
   lastLoginIP String?   @db.VarChar(45)
   isActive    Boolean   @default(true)
 
+  role Role @default(USER)
+
   profile Profile?
+
   posts   Post[]
   comments Comment[]
   likes   Like[]
@@ -46,7 +65,6 @@ model User {
 
   tokens  Token[]      
   sessions Session[]   
-
 
   followers Follow[] @relation("followers")
   following Follow[] @relation("following")
@@ -60,7 +78,10 @@ model User {
   @@index([email])
   @@index([phone])
   @@index([deletedAt])
+  @@index([role])
 }
+
+// # ================= PROFILE =================
 
 model Profile {
   id        Int     @id @default(autoincrement())
@@ -69,19 +90,20 @@ model Profile {
   fullName  String? @db.VarChar(100)
   bio       String? @db.Text
   avatarUrl String? @db.VarChar(255)
-  avatarKey String? @db.VarChar(255)  
+  avatarKey String? @db.VarChar(255)
   website   String? @db.VarChar(255)
   gender    String? @db.VarChar(20)
   isPrivate Boolean @default(false)
-  
-  // Account settings
+
   emailNotifications Boolean @default(true)
   pushNotifications  Boolean @default(true)
-  
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([username])
 }
+
+// # ================= OTP =================
 
 model OTP {
   id        Int      @id @default(autoincrement())
@@ -99,6 +121,8 @@ model OTP {
   @@index([expiresAt])
 }
 
+// # ================= FOLLOW =================
+
 model Follow {
   id          Int @id @default(autoincrement())
   followerId  Int
@@ -113,25 +137,31 @@ model Follow {
   @@index([followingId])
 }
 
+// # ================= POST =================
+
 model Post {
   id        Int      @id @default(autoincrement())
   authorId  Int
   caption   String?  @db.Text
   location  String?  @db.VarChar(100)
   isArchived Boolean @default(false)
-  
+  deletedAt DateTime?   
+
   author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
   media     Media[]
   comments  Comment[]
   likes     Like[]
   savedBy   SavedPost[]
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@index([authorId])
   @@index([createdAt])
 }
+
+// # ================= MEDIA =================
 
 model Media {
   id        Int       @id @default(autoincrement())
@@ -140,13 +170,15 @@ model Media {
   thumbnailUrl String? @db.VarChar(500)
   type      MediaType
   order     Int       @default(0)
-  fileSize  Int?      // Size in bytes
+  fileSize  Int?
   mimeType  String?   @db.VarChar(100)
-  
+
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-  
+
   @@index([postId])
 }
+
+// # ================= COMMENT =================
 
 model Comment {
   id       Int    @id @default(autoincrement())
@@ -154,6 +186,7 @@ model Comment {
   userId   Int
   content  String @db.Text
   parentId Int?
+  deletedAt DateTime? // ✅ soft delete
 
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -170,6 +203,8 @@ model Comment {
   @@index([userId])
   @@index([parentId])
 }
+
+// # ================= LIKE =================
 
 model Like {
   id        Int  @id @default(autoincrement())
@@ -190,6 +225,8 @@ model Like {
   @@index([commentId])
 }
 
+// # ================= SAVED POST =================
+
 model SavedPost {
   id        Int      @id @default(autoincrement())
   userId    Int
@@ -204,6 +241,8 @@ model SavedPost {
   @@index([userId])
   @@index([postId])
 }
+
+// # ================= CHAT =================
 
 model Conversation {
   id      Int     @id @default(autoincrement())
@@ -246,6 +285,8 @@ model Message {
   @@index([senderId])
 }
 
+// # ================= TOKEN =================
+
 model Token {
   id        Int      @id @default(autoincrement())
   userId    Int
@@ -254,15 +295,17 @@ model Token {
   expiresAt DateTime
   isRevoked Boolean  @default(false)
   revokedAt DateTime?
-  
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   createdAt DateTime @default(now())
-  
+
   @@index([userId])
   @@index([token])
   @@index([expiresAt])
 }
+
+// # ================= SESSION =================
 
 model Session {
   id           String   @id @default(cuid())
@@ -274,36 +317,341 @@ model Session {
   lastActivity DateTime @default(now())
   expiresAt    DateTime
   isActive     Boolean  @default(true)
-  
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@index([userId])
   @@index([token])
   @@index([isActive])
 }
 
-
-enum TokenType {
-  ACCESS
-  REFRESH
-  PASSWORD_RESET
-  EMAIL_VERIFICATION
-}
+// # ================= REVOKED TOKEN =================
 
 model RevokedAccessToken {
   id        Int      @id @default(autoincrement())
   userId    Int
   token     String   @unique @db.VarChar(500)
   expiresAt DateTime
-  
+
   createdAt DateTime @default(now())
-  
+
   @@index([userId])
   @@index([token])
   @@index([expiresAt])
 }
+
+
+// generator client {
+//   provider = "prisma-client-js"
+//   output   = "../src/generated/prisma"
+// }
+
+// datasource db {
+//   provider = "postgresql"
+//   url      = env("DATABASE_URL")
+// }
+
+// enum MediaType {
+//   IMAGE
+//   VIDEO
+// }
+
+// enum MessageType {
+//   TEXT
+//   IMAGE
+//   VIDEO
+// }
+
+// enum OTPType {
+//   EMAIL_VERIFICATION
+//   PHONE_VERIFICATION
+//   PASSWORD_RESET
+// }
+
+// model User {
+//   id         Int      @id @default(autoincrement())
+//   email      String?  @unique @db.VarChar(100)
+//   phone      String?  @unique
+//   password   String   @db.VarChar(255)
+//   isVerified Boolean  @default(false)
+//   deletedAt  DateTime?
+
+//   lastLoginAt DateTime?
+//   lastLoginIP String?   @db.VarChar(45)
+//   isActive    Boolean   @default(true)
+
+//    role       String   @default("USER") 
+
+//   profile Profile?
+//   posts   Post[]
+//   comments Comment[]
+//   likes   Like[]
+//   savedPosts SavedPost[]
+//   otps    OTP[]
+
+//   tokens  Token[]      
+//   sessions Session[]   
+
+
+//   followers Follow[] @relation("followers")
+//   following Follow[] @relation("following")
+
+//   conversations ConversationParticipant[]
+//   messages      Message[]
+
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+
+//   @@index([email])
+//   @@index([phone])
+//   @@index([deletedAt])
+// }
+
+// model Profile {
+//   id        Int     @id @default(autoincrement())
+//   userId    Int     @unique
+//   username  String  @unique @db.VarChar(50)
+//   fullName  String? @db.VarChar(100)
+//   bio       String? @db.Text
+//   avatarUrl String? @db.VarChar(255)
+//   avatarKey String? @db.VarChar(255)  
+//   website   String? @db.VarChar(255)
+//   gender    String? @db.VarChar(20)
+//   isPrivate Boolean @default(false)
+  
+//   // Account settings
+//   emailNotifications Boolean @default(true)
+//   pushNotifications  Boolean @default(true)
+  
+//   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+//   @@index([username])
+// }
+
+// model OTP {
+//   id        Int      @id @default(autoincrement())
+//   userId    Int
+//   otp       String   @db.VarChar(6)
+//   type      OTPType
+//   expiresAt DateTime
+
+//   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+//   createdAt DateTime @default(now())
+
+//   @@index([userId])
+//   @@index([type])
+//   @@index([expiresAt])
+// }
+
+// model Follow {
+//   id          Int @id @default(autoincrement())
+//   followerId  Int
+//   followingId Int
+
+//   follower  User @relation("following", fields: [followerId], references: [id], onDelete: Cascade)
+//   following User @relation("followers", fields: [followingId], references: [id], onDelete: Cascade)
+
+//   createdAt DateTime @default(now())
+
+//   @@unique([followerId, followingId])
+//   @@index([followingId])
+// }
+
+// model Post {
+//   id        Int      @id @default(autoincrement())
+//   authorId  Int
+//   caption   String?  @db.Text
+//   location  String?  @db.VarChar(100)
+//   isArchived Boolean @default(false)
+  
+//   author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+//   media     Media[]
+//   comments  Comment[]
+//   likes     Like[]
+//   savedBy   SavedPost[]
+  
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+  
+//   @@index([authorId])
+//   @@index([createdAt])
+// }
+
+// model Media {
+//   id        Int       @id @default(autoincrement())
+//   postId    Int
+//   url       String    @db.VarChar(500)
+//   thumbnailUrl String? @db.VarChar(500)
+//   type      MediaType
+//   order     Int       @default(0)
+//   fileSize  Int?      // Size in bytes
+//   mimeType  String?   @db.VarChar(100)
+  
+//   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+//   @@index([postId])
+// }
+
+// model Comment {
+//   id       Int    @id @default(autoincrement())
+//   postId   Int
+//   userId   Int
+//   content  String @db.Text
+//   parentId Int?
+
+//   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+//   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+//   parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+//   replies Comment[] @relation("CommentReplies")
+
+//   likes Like[]
+
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+
+//   @@index([postId])
+//   @@index([userId])
+//   @@index([parentId])
+// }
+
+// model Like {
+//   id        Int  @id @default(autoincrement())
+//   userId    Int
+//   postId    Int?
+//   commentId Int?
+
+//   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+//   post    Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+//   comment Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+//   createdAt DateTime @default(now())
+
+//   @@unique([userId, postId])
+//   @@unique([userId, commentId])
+//   @@index([userId])
+//   @@index([postId])
+//   @@index([commentId])
+// }
+
+// model SavedPost {
+//   id        Int      @id @default(autoincrement())
+//   userId    Int
+//   postId    Int
+
+//   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+//   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+//   createdAt DateTime @default(now())
+
+//   @@unique([userId, postId])
+//   @@index([userId])
+//   @@index([postId])
+// }
+
+// model Conversation {
+//   id      Int     @id @default(autoincrement())
+//   isGroup Boolean @default(false)
+
+//   participants ConversationParticipant[]
+//   messages     Message[]
+
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+// }
+
+// model ConversationParticipant {
+//   id             Int @id @default(autoincrement())
+//   conversationId Int
+//   userId         Int
+
+//   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+//   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+//   @@unique([conversationId, userId])
+//   @@index([userId])
+// }
+
+// model Message {
+//   id             Int @id @default(autoincrement())
+//   conversationId Int
+//   senderId       Int
+
+//   content  String?     @db.Text
+//   mediaUrl String?     @db.VarChar(255)
+//   type     MessageType @default(TEXT)
+
+//   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+//   sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+//   createdAt DateTime @default(now())
+
+//   @@index([conversationId])
+//   @@index([senderId])
+// }
+
+// model Token {
+//   id        Int      @id @default(autoincrement())
+//   userId    Int
+//   token     String   @unique @db.VarChar(500)
+//   type      TokenType
+//   expiresAt DateTime
+//   isRevoked Boolean  @default(false)
+//   revokedAt DateTime?
+  
+//   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+//   createdAt DateTime @default(now())
+  
+//   @@index([userId])
+//   @@index([token])
+//   @@index([expiresAt])
+// }
+
+// model Session {
+//   id           String   @id @default(cuid())
+//   userId       Int
+//   token        String   @unique @db.VarChar(500)
+//   deviceInfo   String?  @db.Text
+//   ipAddress    String?  @db.VarChar(45)
+//   userAgent    String?  @db.Text
+//   lastActivity DateTime @default(now())
+//   expiresAt    DateTime
+//   isActive     Boolean  @default(true)
+  
+//   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+  
+//   @@index([userId])
+//   @@index([token])
+//   @@index([isActive])
+// }
+
+
+// enum TokenType {
+//   ACCESS
+//   REFRESH
+//   PASSWORD_RESET
+//   EMAIL_VERIFICATION
+// }
+
+// model RevokedAccessToken {
+//   id        Int      @id @default(autoincrement())
+//   userId    Int
+//   token     String   @unique @db.VarChar(500)
+//   expiresAt DateTime
+  
+//   createdAt DateTime @default(now())
+  
+//   @@index([userId])
+//   @@index([token])
+//   @@index([expiresAt])
+// }
 
 

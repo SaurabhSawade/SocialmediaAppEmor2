@@ -14,8 +14,8 @@ export class TokenService {
     return TokenService.instance;
   }
 
-  generateTokens(userId: number, email?: string | null, phone?: string | null) {
-    const payload = { userId, email, phone };
+  generateTokens(userId: number, email?: string | null, phone?: string | null, role?: string) {
+    const payload = { userId, email, phone, role: role || 'USER' };
 
     const accessToken = jwt.sign(payload, env.JWT_ACCESS_SECRET, {
       expiresIn: env.JWT_ACCESS_EXPIRY,

@@ -11,7 +11,7 @@ import { RegisterDTO, LoginDTO, AuthResponseDTO } from "../types/dto/auth.dto";
 import { Helpers } from "../utils/helpers";
 import prisma from "../prisma/client";
 import { AppError } from "../utils/app-error";
-import { th } from "zod/v4/locales";
+// import { th } from "zod/v4/locales";
 
 export class AuthService {
   private static instance: AuthService;
@@ -95,7 +95,7 @@ export class AuthService {
 
     // Generate tokens
     logger.debug(`🔑 Generating tokens for user ${user.id}`);
-    const tokens = TokenService.generateTokens(user.id, user.email, user.phone);
+    const tokens = TokenService.generateTokens(user.id, user.email, user.phone, user.role);
 
     return {
       // user: {
@@ -141,7 +141,7 @@ export class AuthService {
     
     logger.info(`✅ User ${user.id} authenticated successfully`);
 
-    const tokens = TokenService.generateTokens(user.id, user.email, user.phone);
+    const tokens = TokenService.generateTokens(user.id, user.email, user.phone, user.role);
 
     // Save refresh token to database
     const refreshExpiry = new Date();

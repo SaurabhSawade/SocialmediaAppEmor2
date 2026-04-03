@@ -90,6 +90,7 @@ export class UserRepository {
     email?: string;
     phone?: string;
     password: string;
+    role?: "USER" | "ADMIN";
     profile: {
       username: string;
       fullName?: string;
@@ -102,6 +103,7 @@ export class UserRepository {
             email: data.email,
             phone: data.phone,
             password: data.password,
+            role: data.role || "USER",
             profile: {
               create: data.profile,
             },
