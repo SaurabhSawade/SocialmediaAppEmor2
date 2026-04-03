@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import logger from '../config/logger';
 import { AppError } from "./app-error";
+import { Messages } from '../constants/messages';
 
 export class ImageProcessor {
   /**
@@ -24,7 +25,7 @@ export class ImageProcessor {
       return outputPath;
     } catch (error) {
       logger.error('Error processing avatar:', error);
-      throw new AppError('Failed to process avatar image', { cause: error });
+      throw new AppError(Messages.AVATAR_UPLOAD_FAILED, { cause: error });
     }
   }
   
@@ -76,7 +77,7 @@ export class ImageProcessor {
       };
     } catch (error) {
       logger.error('Error processing post image:', error);
-      throw new AppError('Failed to process post image', { cause: error });
+      throw new AppError(Messages.POST_IMAGE_PROCESS_FAILED, { cause: error });
     }
   }
   

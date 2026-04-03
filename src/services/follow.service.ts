@@ -19,7 +19,7 @@ export class FollowService {
   async followUser(followerId: number, followingId: number): Promise<{ followed: boolean; message: string }> {
     // Check if trying to follow self
     if (followerId === followingId) {
-      throw new AppError('You cannot follow yourself');
+      throw new AppError(Messages.CANNOT_FOLLOW_SELF);
     }
     
     // Check if target user exists and is not deleted

@@ -38,42 +38,38 @@ export class AuthService {
   }
 
   async register(data: RegisterDTO): Promise<AuthResponseDTO> {
-    // Validate input
-    // if (!data.email && !data.phone) {
-    //   return new AppError("Either email or phone is required");
-    // }
-
-
-    // way too much validation in service layer, should be in validation layer, but for now keeping it here for simplicity and to avoid circular dependency with validation utils
-
-    // if (!Helpers.isValidUsername(data.username)) {
-    //   return new AppError("Invalid username format");
-    // }
-
-    // if (!Helpers.isValidPassword(data.password)) {
-    //   return new AppError(Messages.WEAK_PASSWORD);
-    // }
+    logger.info(`📝 Registration attempt for username: ${data.username}, email: ${data.email}`);
+    
 
     // Check existing user
     if (data.email) {
       const existingUser = await UserRepository.findByEmail(data.email);
-      if (existingUser) throw new AppError(Messages.EMAIL_EXISTS);
+      if (existingUser) {
+        logger.warn(`⚠️ Registration failed: Email already exists - ${data.email}`);
+        throw new AppError(Messages.EMAIL_EXISTS);
+      }
     }
 
     if (data.phone) {
       const existingUser = await UserRepository.findByPhone(data.phone);
-      if (existingUser) throw new AppError(Messages.PHONE_EXISTS);
+      if (existingUser) {
+        logger.warn(`⚠️ Registration failed: Phone already exists - ${data.phone}`);
+        throw new AppError(Messages.PHONE_EXISTS);
+      }
     }
 
     // Check username availability
     const ProfileRepository = (
       await import("../repositories/profile.repository")
     ).default;
-    const isUsernameAvailable =
-      await ProfileRepository.checkUsernameAvailability(data.username);
-    if (!isUsernameAvailable) throw new AppError(Messages.USERNAME_EXISTS);
+    const isUsernameAvailable = await ProfileRepository.checkUsernameAvailability(data.username);
+    if (!isUsernameAvailable) {
+      logger.warn(`⚠️ Registration failed: Username already taken - ${data.username}`);
+      throw new AppError(Messages.USERNAME_EXISTS);
+    }
 
     // Create user
+    logger.debug(`🔄 Creating user account for ${data.username}`);
     const hashedPassword = await this.hashPassword(data.password);
     const user = await UserRepository.create({
       email: data.email,
@@ -84,9 +80,12 @@ export class AuthService {
         fullName: data.fullName,
       },
     });
+    
+    logger.info(`✅ User created successfully: ID ${user.id}, username ${data.username}`);
 
     // Send OTP for verification if email exists
     if (user.email) {
+      logger.debug(`📧 Sending verification OTP to ${user.email}`);
       await OTPService.generateAndSendOTP(
         user.id,
         user.email,
@@ -95,6 +94,7 @@ export class AuthService {
     }
 
     // Generate tokens
+    logger.debug(`🔑 Generating tokens for user ${user.id}`);
     const tokens = TokenService.generateTokens(user.id, user.email, user.phone);
 
     return {
@@ -112,9 +112,12 @@ export class AuthService {
   }
 
   async login(data: LoginDTO): Promise<AuthResponseDTO> {
+    logger.info(`🔐 Login attempt for: ${data.identifier}`);
+    
     const user = await UserRepository.findByEmailOrPhone(data.identifier);
 
     if (!user) {
+      logger.warn(`⚠️ Login failed: User not found for ${data.identifier}`);
       throw new AppError(Messages.INVALID_CREDENTIALS);
     }
 
@@ -123,6 +126,7 @@ export class AuthService {
     // }
 
     if (!user.isVerified) {
+      logger.warn(`⚠️ Login failed: Email not verified for user ${user.id}`);
       throw new AppError(Messages.EMAIL_NOT_VERIFIED);
     }
 
@@ -131,8 +135,11 @@ export class AuthService {
       user.password,
     );
     if (!isValidPassword) {
+      logger.warn(`⚠️ Login failed: Invalid password for ${data.identifier}`);
       throw new AppError(Messages.INVALID_CREDENTIALS);
     }
+    
+    logger.info(`✅ User ${user.id} authenticated successfully`);
 
     const tokens = TokenService.generateTokens(user.id, user.email, user.phone);
 
@@ -170,20 +177,19 @@ export class AuthService {
     };
   }
 
-  async resendOTP(identifier: string): Promise<{ message: string } | boolean> {
-    try {
-        const user = await UserRepository.findByEmailOrPhone(identifier);
+  async resendOTP(identifier: string): Promise<{ message: string }> {
+    const user = await UserRepository.findByEmailOrPhone(identifier);
 
     if (!user) {
-      return new AppError(Messages.NOT_FOUND);
+      throw new AppError(Messages.NOT_FOUND, 404);
     }
 
     if (user.isVerified) {
-      return new AppError("Account already verified");
+      throw new AppError(Messages.ACCOUNT_ALREADY_VERIFIED);
     }
 
     if (!user.email) {
-      return new AppError("No email associated with this account");
+      throw new AppError(Messages.NO_EMAIL_ASSOCIATED);
     }
 
     await OTPService.generateAndSendOTP(
@@ -193,11 +199,6 @@ export class AuthService {
     );
 
     return { message: Messages.OTP_SENT };
-    } catch (error) {
-      console.log("Error in resendOTP:", error);
-      console.log("Error message:", (error as Error).message);
-      return false;
-    }
   }
 
   async verifyOTP(
@@ -295,11 +296,11 @@ export class AuthService {
     const user = await UserRepository.findByEmailOrPhone(identifier);
 
     if (!user) {
-      return new AppError(Messages.USER_NOT_FOUND);
+      throw new AppError(Messages.USER_NOT_FOUND, 404);
     }
 
     if (!user.email) {
-      return new AppError("No email associated with this account");
+      throw new AppError(Messages.NO_EMAIL_ASSOCIATED);
     }
 
     await OTPService.generateAndSendOTP(
@@ -317,14 +318,14 @@ export class AuthService {
     newPassword: string,
   ): Promise<{ message: string }> {
     if (!Helpers.isValidPassword(newPassword)) {
-      return new AppError(Messages.WEAK_PASSWORD);
+      throw new AppError(Messages.WEAK_PASSWORD, 400);
     }
 
     const user = await UserRepository.findByEmailOrPhone(identifier);
     
     if (!user) {
       // console.log("User not found for identifier:", identifier);
-      return new AppError(Messages.NOT_FOUND);
+      throw new AppError(Messages.NOT_FOUND, 404);
     }
 
     const isValid = await OTPService.verifyOTP(
@@ -334,7 +335,7 @@ export class AuthService {
     );
     if (!isValid) {
       // console.log("Invalid OTP for user ID:", user.id);
-      return new AppError(Messages.INVALID_OTP);
+      throw new AppError(Messages.INVALID_OTP, 400);
     }
 
     const hashedPassword = await this.hashPassword(newPassword);
@@ -349,13 +350,13 @@ export class AuthService {
     newPassword: string,
   ): Promise<{ message: string }> {
     if (!Helpers.isValidPassword(newPassword)) {
-      return new AppError(Messages.WEAK_PASSWORD);
+      throw new AppError(Messages.WEAK_PASSWORD, 400);
     }
 
     const user = await UserRepository.findById(userId);
-
+    
     if (!user) {
-      return new AppError(Messages.NOT_FOUND);
+      throw new AppError(Messages.NOT_FOUND, 404);
     }
 
     const isValidPassword = await this.comparePassword(
@@ -363,7 +364,7 @@ export class AuthService {
       user.password,
     );
     if (!isValidPassword) {
-      return new AppError("Current password is incorrect");
+      throw new AppError(Messages.CURRENT_PASSWORD_INCORRECT);
     }
 
     const hashedPassword = await this.hashPassword(newPassword);
@@ -444,12 +445,12 @@ export class AuthService {
     const session = await TokenRepository.findSession(currentToken);
     
     if (!session) {
-      return new AppError('Session not found');
+      throw new AppError('Session not found', 404);
     }
     
     // Don't allow revoking current session
     if (session.id === sessionId) {
-      return new AppError('Cannot revoke current session. Use logout instead.');
+      throw new AppError('Cannot revoke current session. Use logout instead.', 400);
     }
     
     // Get session to revoke
@@ -458,7 +459,7 @@ export class AuthService {
     });
     
     if (!sessionToRevoke) {
-      return new AppError('Session not found');
+      throw new AppError('Session not found', 404);
     }
     
     await TokenRepository.revokeToken(sessionToRevoke.token);
@@ -472,7 +473,7 @@ export class AuthService {
     const user = await UserRepository.getUserWithStats(userId);
 
     if (!user) {
-      return new AppError(Messages.NOT_FOUND);
+      throw new AppError(Messages.NOT_FOUND, 404);
     }
 
     return {
@@ -500,13 +501,13 @@ export class AuthService {
   ): Promise<{ message: string }> {
     // Validate new email format
     if (!Helpers.isValidEmail(newEmail)) {
-      return new AppError("Invalid email format");
+      throw new AppError("Invalid email format", 400);
     }
 
     // Get user
     const user = await UserRepository.findById(userId);
     if (!user) {
-      return new AppError(Messages.NOT_FOUND);
+      throw new AppError(Messages.NOT_FOUND, 404);
     }
 
     // Verify current password
@@ -515,18 +516,18 @@ export class AuthService {
       user.password,
     );
     if (!isValidPassword) {
-      return new AppError("Current password is incorrect");
+      throw new AppError(Messages.CURRENT_PASSWORD_INCORRECT);
     }
 
     // Check if new email is different from current
     if (user.email === newEmail) {
-      return new AppError("New email is the same as current email");
+      throw new AppError(Messages.NEW_EMAIL_SAME_AS_CURRENT);
     }
 
     // Check if new email is already taken
     const existingUser = await UserRepository.findByEmail(newEmail);
     if (existingUser) {
-      return new AppError(Messages.EMAIL_EXISTS);
+      throw new AppError(Messages.EMAIL_EXISTS, 409);
     }
 
     // Update email

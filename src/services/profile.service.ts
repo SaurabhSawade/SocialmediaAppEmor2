@@ -166,7 +166,7 @@ export class ProfileService {
       };
     } catch (error) {
       logger.error('Error uploading avatar:', error);
-      throw new AppError('Failed to upload avatar');
+      throw new AppError(Messages.AVATAR_UPLOAD_FAILED);
     }
   }
   

@@ -1,6 +1,8 @@
 import rateLimit from "express-rate-limit";
 import env from "../config/env";
 import { Messages } from "../constants/messages";
+import { STATUS_CODES } from "node:http";
+import { HttpStatus } from "../constants/http-status";
 
 export const rateLimiter = rateLimit({
   windowMs: env.RATE_LIMIT_WINDOW_MS,
@@ -17,10 +19,11 @@ export const rateLimiter = rateLimit({
 
 export const authRateLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute // do it in env
-  max: 50, // 5 attempts // do this in env
+  max: 2, // 2 attempts // do this in env
   skipSuccessfulRequests: true,
   message: {
     success: false,
+    statusCode: HttpStatus.TOO_MANY_REQUESTS,
     message:
       "Too many authentication attempts. Please try again after 15 minutes.",//put message in constants
     timestamp: new Date().toISOString(),

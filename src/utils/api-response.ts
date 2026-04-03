@@ -30,9 +30,9 @@ export class ApiResponseHandler {
       // timestamp: new Date().toISOString(),
     };
 
-    if (error && process.env.NODE_ENV === "development") {
-      response.error = error.message;
-    }
+    // if (error && process.env.NODE_ENV === "development") {
+    //   response.error = error.message;
+    // }
 
     return res.status(statusCode).json(response);
   }

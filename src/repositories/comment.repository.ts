@@ -1,6 +1,9 @@
 import prisma from '../prisma/client';
 import logger from '../config/logger';
 import { AppError } from "../utils/app-error";
+import { Messages } from '../constants/messages';
+import { http } from 'winston';
+import { HttpStatus } from "../constants/http-status";
 
 export class CommentRepository {
   private static instance: CommentRepository;
@@ -121,15 +124,18 @@ export class CommentRepository {
   
   async update(id: number, content: string, userId: number) {
     try {
+      logger.debug(`🔍 Finding comment ${id} for user ${userId}`);
       const comment = await prisma.comment.findFirst({
         where: { id, userId },
       });
       
       if (!comment) {
-        return new AppError('Comment not found or unauthorized');
+        logger.warn(`⚠️ Comment ${id} not found or unauthorized for user ${userId}`);
+        throw new AppError(Messages.COMMENT_UNAUTHORIZED);
       }
       
-      return await prisma.comment.update({
+      logger.debug(`✏️ Updating comment ${id} in database`);
+      const updated = await prisma.comment.update({
         where: { id },
         data: { content },
         include: {
@@ -138,6 +144,9 @@ export class CommentRepository {
           },
         },
       });
+      
+      logger.debug(`✅ Comment ${id} updated in database`);
+      return updated;
     } catch (error) {
       logger.error('Error in CommentRepository.update:', error);
       throw error;
@@ -146,17 +155,23 @@ export class CommentRepository {
   
   async delete(id: number, userId: number) {
     try {
+      logger.debug(`🔍 Finding comment ${id} for deletion by user ${userId}`);
       const comment = await prisma.comment.findFirst({
         where: { id, userId },
       });
       
       if (!comment) {
-        return new AppError('Comment not found or unauthorized');
+        logger.warn(`⚠️ Comment ${id} not found or unauthorized for deletion by user ${userId}`);
+        throw new AppError(Messages.COMMENT_UNAUTHORIZED);
       }
       
-      return await prisma.comment.delete({
+      logger.debug(`🗑️ Deleting comment ${id} from database`);
+      const deleted = await prisma.comment.delete({
         where: { id },
       });
+      
+      logger.debug(`✅ Comment ${id} deleted from database`);
+      return deleted;
     } catch (error) {
       logger.error('Error in CommentRepository.delete:', error);
       throw error;

@@ -20,6 +20,8 @@ router.post(
 
 router.get('/posts/:postId/comments', AuthMiddleware.authenticate, CommentController.getPostComments);
 
+router.get('/comments/:commentId', AuthMiddleware.authenticate, CommentController.getComment);
+
 router.put(
   '/comments/:commentId',
   ValidationMiddleware.validate(updateCommentValidation),

@@ -34,6 +34,20 @@ export class CommentController {
     }
   }
   
+  static async getComment(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const commentIdParam = Array.isArray(req.params.commentId) ? req.params.commentId[0] : req.params.commentId;
+      const commentId = parseInt(commentIdParam, 10);
+      const userId = req.user?.id;
+      
+      const comment = await CommentService.getComment(commentId, userId);
+      
+      ApiResponseHandler.success(res, 'Comment retrieved successfully', comment);
+    } catch (error) {
+      next(error);
+    }
+  }
+  
   static async updateComment(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const userId = req.user!.id;

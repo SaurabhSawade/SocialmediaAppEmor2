@@ -147,22 +147,22 @@ export class UserService {
     // Verify password
     const user = await UserRepository.findById(userId);
     if (!user) {
-      return new AppError(Messages.USER_NOT_FOUND);
+      throw new AppError(Messages.USER_NOT_FOUND, 404);
     }
     
     const isValidPassword = await this.comparePassword(password, user.password);
     if (!isValidPassword) {
-      return new AppError('Invalid password');
+      throw new AppError('Invalid password', 400);
     }
     
     if (user.email === newEmail) {
-      return new AppError('New email cannot be same as current email');
+      throw new AppError('New email cannot be same as current email', 400);
     }
     
     // Check if email is already taken
     const existingUser = await UserRepository.findByEmail(newEmail);
     if (existingUser && existingUser.id !== userId) {
-      return new AppError(Messages.EMAIL_EXISTS);
+      throw new AppError(Messages.EMAIL_EXISTS, 409);
     }
     
     // If OTP provided, verify it
@@ -171,7 +171,7 @@ export class UserService {
     if (otp) {
       const isValidOTP = await OTPService.verifyOTP(userId, otp, OTPType.EMAIL_VERIFICATION);
       if (!isValidOTP) {
-        return new AppError(Messages.INVALID_OTP);
+        throw new AppError(Messages.INVALID_OTP, 400);
       }
 
       await UserRepository.update(userId, { email: newEmail });
@@ -190,21 +190,21 @@ export class UserService {
     // Similar to changeEmail logic
     const user = await UserRepository.findById(userId);
     if (!user) {
-      return new AppError(Messages.USER_NOT_FOUND);
+      throw new AppError(Messages.USER_NOT_FOUND, 404);
     }
     
     const isValidPassword = await this.comparePassword(password, user.password);
     if (!isValidPassword) {
-      return new AppError('Invalid password');
+      throw new AppError('Invalid password', 400);
     }
     
     if (user.phone === newPhone) {
-      return new AppError('New phone cannot be same as current phone');
+      throw new AppError('New phone cannot be same as current phone', 400);
     }
     
     const existingUser = await UserRepository.findByPhone(newPhone);
     if (existingUser && existingUser.id !== userId) {
-      return new AppError(Messages.PHONE_EXISTS);
+      throw new AppError(Messages.PHONE_EXISTS, 409);
     }
     
     const OTPService = (await import('./otp.service')).default;
@@ -212,7 +212,7 @@ export class UserService {
     if (otp) {
       const isValidOTP = await OTPService.verifyOTP(userId, otp, OTPType.PHONE_VERIFICATION);
       if (!isValidOTP) {
-        return new AppError(Messages.INVALID_OTP);
+        throw new AppError(Messages.INVALID_OTP, 400);
       }
 
       await UserRepository.update(userId, { phone: newPhone });
@@ -231,12 +231,17 @@ export class UserService {
     // Verify password before soft delete
     const user = await UserRepository.findById(userId);
     if (!user) {
-      return new AppError(Messages.USER_NOT_FOUND);
+      throw new AppError(Messages.USER_NOT_FOUND, 404);
     }
     
     const isValidPassword = await this.comparePassword(password, user.password);
     if (!isValidPassword) {
-      return new AppError('Invalid password');
+      throw new AppError('Invalid password', 400);
+    }
+    
+    // Check if account is already deleted
+    if (user.deletedAt) {
+      throw new AppError('Account is not deleted', 400);
     }
     
     // Soft delete user
@@ -270,7 +275,7 @@ export class UserService {
     const profile = await ProfileRepository.getProfileWithFollowers(username, currentUserId);
     
     if (!profile) {
-      return new AppError(Messages.PROFILE_NOT_FOUND);
+      throw new AppError(Messages.PROFILE_NOT_FOUND, 404);
     }
     
     // If account is private and current user doesn't follow, show limited info

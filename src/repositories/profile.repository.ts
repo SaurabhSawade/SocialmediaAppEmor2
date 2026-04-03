@@ -1,6 +1,7 @@
 import prisma from '../prisma/client';
 import logger from '../config/logger';
 import { AppError } from "../utils/app-error";
+import { Messages } from '../constants/messages';
 
 export class ProfileRepository {
   private static instance: ProfileRepository;
@@ -101,7 +102,7 @@ export class ProfileRepository {
         });
         
         if (existing) {
-          return new AppError('Username already taken');
+          throw new AppError(Messages.USERNAME_EXISTS);
         }
       }
       

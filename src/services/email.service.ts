@@ -3,6 +3,7 @@ import env from "../config/env";
 import { OTPType } from "../constants/enums";
 import logger from "../config/logger";
 import { AppError } from "../utils/app-error";
+import { Messages } from "../constants/messages";
 
 export class EmailService {
   private static instance: EmailService;
@@ -116,7 +117,7 @@ export class EmailService {
 
       // Check if transporter is available
       if (!this.transporter) {
-        throw new AppError('Email service is not configured. Please check SMTP settings in .env');
+        throw new AppError(Messages.EMAIL_SERVICE_NOT_CONFIGURED);
       }
 
       // Send real email
@@ -153,7 +154,7 @@ export class EmailService {
         return;
       }
       
-      throw new AppError("Failed to send OTP email. Please try again later.");
+      throw new AppError(Messages.OTP_EMAIL_SEND_FAILED);
     }
   }
 
@@ -191,7 +192,7 @@ export class EmailService {
 
       // Check if transporter is available
       if (!this.transporter) {
-        throw new AppError('Email service is not configured. Please check SMTP settings in .env');
+        throw new AppError(Messages.EMAIL_SERVICE_NOT_CONFIGURED);
       }
 
       // Send real email
@@ -225,7 +226,7 @@ export class EmailService {
         return;
       }
 
-      throw new AppError("Failed to send email. Please try again later.");
+      throw new AppError(Messages.EMAIL_SEND_FAILED);
     }
   }
 }

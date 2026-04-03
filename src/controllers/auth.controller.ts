@@ -147,7 +147,7 @@ export class AuthController {
       const { identifier, otp, newPassword }: ResetPasswordDTO = req.body;
 
       if (!identifier || !otp || !newPassword) {
-        throw new AppError('Missing required fields: identifier, otp, and newPassword are required');
+        throw new AppError(Messages.MISSING_REQUIRED_FIELDS);
       }
 
       const result = await AuthService.resetPassword(
