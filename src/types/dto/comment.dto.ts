@@ -1,3 +1,6 @@
+import { formatDate } from "../../utils/dateFormatter";
+
+
 export interface CreateCommentDTO {
   content: string;
   parentId?: number;

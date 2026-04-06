@@ -11,22 +11,22 @@ export interface GetUsersQueryDTO {
 
 export interface UserListResponseDTO {
   users: UserHierarchyDTO[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-    hasNext: boolean;
-    hasPrev: boolean;
-  };
-  filters: {
-    search?: string;
-    status?: string;
-    dateRange?: {
-      startDate?: string;
-      endDate?: string;
-    };
-  };
+  // pagination: {
+  //   page: number;
+  //   limit: number;
+  //   total: number;
+  //   totalPages: number;
+  //   hasNext: boolean;
+  //   hasPrev: boolean;
+  // };
+  // filters: {
+  //   search?: string;
+  //   status?: string;
+  //   dateRange?: {
+  //     startDate?: string;
+  //     endDate?: string;
+  //   };
+  // };
 }
 
 export interface UserHierarchyDTO {
@@ -42,19 +42,25 @@ export interface UserHierarchyDTO {
   isActive: boolean;
   isPrivate: boolean;
   status: 'active' | 'deleted';
-  stats: {
-    postsCount: number;
-    commentsCount: number;
-    likesReceived: number;
-    likesGiven: number;
-    followersCount: number;
-    followingCount: number;
-    totalEngagement: number;
-  };
+  // stats: {
+  //   postsCount: number;
+  //   commentsCount: number;
+  //   likesReceived: number;
+  //   likesGiven: number;
+  //   followersCount: number;
+  //   followingCount: number;
+  //   totalEngagement: number;
+  // };
   posts: PostHierarchyDTO[];
   createdAt: string;
-  deletedAt?: string;
+  // deletedAt?: string;
   lastLoginAt?: string;
+  page: number;
+  // limit: number;
+  total: number;
+  totalPages: number;
+  // hasNext: boolean;
+  // hasPrev: boolean;
 }
 
 export interface PostHierarchyDTO {

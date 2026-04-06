@@ -6,10 +6,6 @@ import { RoleMiddleware } from '../../middlewares/role.middleware';
 
 const router = Router();
 
-// All admin routes require authentication AND admin role
-router.use(AuthMiddleware.authenticate);
-router.use(RoleMiddleware.isAdmin);
-
 // Dashboard statistics
 router.get('/stats',AuthMiddleware.authenticate,RoleMiddleware.isAdmin, AdminController.getAdminStats);
 

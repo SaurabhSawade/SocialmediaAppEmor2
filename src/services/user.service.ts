@@ -275,7 +275,7 @@ export class UserService {
     const profile = await ProfileRepository.getProfileWithFollowers(username, currentUserId);
     
     if (!profile) {
-      throw new AppError(Messages.PROFILE_NOT_FOUND, 404);
+      return new AppError(Messages.PROFILE_NOT_FOUND, 404);
     }
     
     // If account is private and current user doesn't follow, show limited info

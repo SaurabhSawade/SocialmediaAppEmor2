@@ -7,12 +7,14 @@ export class ApiResponseHandler {
     message: string,
     data?: T,
     statusCode: number = HttpStatus.OK,
+    meta?: Record<string, any>,
   ): Response {
     return res.status(statusCode).json({
       success: true,
       statusCode,
       message,
       data,
+      ...(meta && meta), 
       // timestamp: new Date().toISOString(),
     });
   }

@@ -36,29 +36,59 @@ export class AdminController {
    * Export users to CSV
    * GET /api/v1/admin/users/export
    */
-  static async exportUsersToCSV(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-    try {
-      const query: GetUsersQueryDTO = {
-        search: req.query.search as string,
-        status: req.query.status as any,
-        startDate: req.query.startDate as string,
-        endDate: req.query.endDate as string,
-        orderBy: req.query.orderBy as string,
-        orderType: req.query.orderType as any,
-      };
+  // static async exportUsersToCSV(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  //   try {
+  //     const query: GetUsersQueryDTO = {
+  //       search: req.query.search as string,
+  //       status: req.query.status as any,
+  //       startDate: req.query.startDate as string,
+  //       endDate: req.query.endDate as string,
+  //       orderBy: req.query.orderBy as string,
+  //       orderType: req.query.orderType as any,
+  //     };
       
-      // const { csv, filename } = await AdminService.exportUsersToCSV(query);
-      const {filePath, filename} = await AdminService.exportUsersToCSV(query);
-      //how to return here
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
-      res.sendFile(filePath);
-      res.download(filePath, filename);
-    } catch (error) {
-      logger.error('Error in exportUsersToCSV:', error);
-      next(error);
-    }
+  //     // const { csv, filename } = await AdminService.exportUsersToCSV(query);
+  //     const {filePath, filename} = await AdminService.exportUsersToExcel(query);
+  //     //how to return here
+  //     res.setHeader('Content-Type', 'text/csv');
+  //     res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+  //     res.sendFile(filePath);
+  //     res.download(filePath, filename);
+  //   } catch (error) {
+  //     logger.error('Error in exportUsersToCSV:', error);
+  //     next(error);
+  //   }
+  // }
+
+  static async exportUsersToCSV(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const query: GetUsersQueryDTO = {
+      search: req.query.search as string,
+      status: req.query.status as any,
+      startDate: req.query.startDate as string,
+      endDate: req.query.endDate as string,
+      orderBy: req.query.orderBy as string,
+      orderType: req.query.orderType as any,
+    };
+
+    const { filePath, filename } = await AdminService.exportUsersToExcel(query);
+
+    // ✅ Correct headers (optional, download already sets it)
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+    // ✅ Send file for download
+    return res.download(filePath, filename, (err) => {
+      if (err) {
+        logger.error("File download error:", err);
+        next(err);
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error in exportUsersToCSV:', error);
+    next(error);
   }
+}
   
   /**
    * Get admin dashboard statistics
@@ -84,11 +114,11 @@ export class AdminController {
       const userId = parseInt(req.params.userId as string);
       const result = await AdminService.getAllUsers({ page: 1, limit: 1, search: String(userId) });
       
-      if (!result.users || result.users.length === 0) {
+      if (!result.user || result.user.length === 0) {
         return ApiResponseHandler.error(res, 'User not found', 404);
       }
       
-      return ApiResponseHandler.success(res, 'User retrieved successfully', result.users[0]);
+      return ApiResponseHandler.success(res, 'User retrieved successfully', result.user[0]);
     } catch (error) {
       logger.error('Error in getUserById:', error);
       next(error);

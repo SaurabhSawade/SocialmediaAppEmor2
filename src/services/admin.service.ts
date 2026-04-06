@@ -3,19 +3,20 @@ import { Parser } from 'json2csv';
 import fs from "fs";
 import path from "path";
 import AdminRepository from '../repositories/admin.repository'
-
+import { formatDate } from '../utils/dateFormatter';
+import ExcelJS from "exceljs";
 export class AdminService {
   private static instance: AdminService;
-  
-  private constructor() {}
-  
+
+  private constructor() { }
+
   static getInstance(): AdminService {
     if (!AdminService.instance) {
       AdminService.instance = new AdminService();
     }
     return AdminService.instance;
   }
-  
+
   async getAllUsers(query: GetUsersQueryDTO) {
     const {
       page = 1,
@@ -27,7 +28,7 @@ export class AdminService {
       orderBy = 'createdAt',
       orderType = 'desc',
     } = query;
-    
+
     const result = await AdminRepository.getAllUsers({
       page,
       limit,
@@ -38,101 +39,75 @@ export class AdminService {
       orderBy,
       orderType,
     });
-    
+
     return {
-      users: result.users,
-      pagination: {
-        page: result.page,
-        limit: result.limit,
-        total: result.total,
-        totalPages: result.totalPages,
-        hasNext: result.page < result.totalPages,
-        hasPrev: result.page > 1,
-      },
-      filters: {
-        search,
-        status,
-        dateRange: startDate || endDate ? { startDate, endDate } : undefined,
-      },
+      user: result.users,
+      page: result.page,
+      total: result.total,
+      totalPages: result.totalPages,
     };
   }
 
-async exportUsersToCSV(query: GetUsersQueryDTO): Promise<{ filePath: string; filename: string }> {
+async exportUsersToExcel(query: GetUsersQueryDTO): Promise<{ filePath: string; filename: string }> {
   const result = await this.getAllUsers({ ...query, limit: 1000 });
 
-  const csvData = result.users.map((user: any) => ({
-    userId: user.id,
-    username: user.username || '',
-    fullName: user.fullName || '',
-    email: user.email || '',
-    phone: user.phone || '',
-    bio: user.bio || '',
-    status: user.status,
-    isVerified: user.isVerified,
-    isPrivate: user.isPrivate ?? false,
-    postsCount: user.stats?.postsCount || 0,
-    commentsCount: user.stats?.commentsCount || 0,
-    totalLikesReceived: user.stats?.likesReceived || 0,
-    totalLikesGiven: user.stats?.likesGiven || 0,
-    followersCount: user.stats?.followersCount || 0,
-    followingCount: user.stats?.followingCount || 0,
-    totalEngagement: user.stats?.totalEngagement || 0,
-    accountCreated: user.createdAt,
-    lastLogin: user.lastLoginAt || '',
-    accountDeleted: user.deletedAt || '',
-    postsData: user.posts?.map((p: any) => 
-      `${p.id}: ${p.caption || 'No caption'} (${p.likesCount || 0} likes, ${p.commentsCount || 0} comments)`
-    ).join('; ') || '',
-    commentsData: user.posts?.flatMap((p: any) => 
-      p.comments?.map((c: any) => `Post ${p.id}: ${c.content?.substring(0, 100)}`) || []
-    ).join('; ') || '',
-  }));
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet("Users");
 
-  const fields = [
-    { label: 'User ID', value: 'userId' },
-    { label: 'Username', value: 'username' },
-    { label: 'Full Name', value: 'fullName' },
-    { label: 'Email', value: 'email' },
-    { label: 'Phone', value: 'phone' },
-    { label: 'Bio', value: 'bio' },
-    { label: 'Status', value: 'status' },
-    { label: 'Verified', value: 'isVerified' },
-    { label: 'Private Account', value: 'isPrivate' },
-    { label: 'Total Posts', value: 'postsCount' },
-    { label: 'Total Comments', value: 'commentsCount' },
-    { label: 'Likes Received', value: 'totalLikesReceived' },
-    { label: 'Likes Given', value: 'totalLikesGiven' },
-    { label: 'Followers', value: 'followersCount' },
-    { label: 'Following', value: 'followingCount' },
-    { label: 'Total Engagement', value: 'totalEngagement' },
-    { label: 'Account Created', value: 'accountCreated' },
-    { label: 'Last Login', value: 'lastLogin' },
-    { label: 'Account Deleted', value: 'accountDeleted' },
-    { label: 'Posts Summary', value: 'postsData' },
-    { label: 'Comments Summary', value: 'commentsData' },
+  // ✅ Define columns (Excel headers)
+  sheet.columns = [
+    { header: "User ID", key: "userId", width: 15 },
+    { header: "Username", key: "username", width: 20 },
+    { header: "Full Name", key: "fullName", width: 20 },
+    { header: "Email", key: "email", width: 25 },
+    { header: "Phone", key: "phone", width: 15 },
+    { header: "Status", key: "status", width: 12 },
+    { header: "Verified", key: "isVerified", width: 12 },
+    { header: "Followers", key: "followersCount", width: 12 },
+    { header: "Following", key: "followingCount", width: 12 },
+    { header: "Engagement", key: "totalEngagement", width: 15 },
+    { header: "Created At", key: "accountCreated", width: 20 },
+    { header: "Last Login", key: "lastLogin", width: 20 },
+    { header: "Deleted At", key: "accountDeleted", width: 20 },
   ];
-  const json2csvParser = new Parser({ fields });
-  const csv = json2csvParser.parse(csvData);
+
+  result.user.forEach((user: any) => {
+    sheet.addRow({
+      userId: user.id,
+      username: user.username || "",
+      fullName: user.fullName || "",
+      email: user.email || "",
+      phone: user.phone || "",
+      status: user.status,
+      isVerified: user.isVerified,
+      followersCount: user.stats?.followersCount || 0,
+      followingCount: user.stats?.followingCount || 0,
+      totalEngagement: user.stats?.totalEngagement || 0,
+      accountCreated: user.createdAt ? formatDate(user.createdAt) : "",
+      lastLogin: user.lastLoginAt ? formatDate(user.lastLoginAt) : "",
+      accountDeleted: user.deletedAt ? formatDate(user.deletedAt) : "",
+    });
+  });
+
+  sheet.getRow(1).font = { bold: true };
 
   const uploadDir = path.join(__dirname, "../../uploads");
   if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
   }
 
-  // ✅ Create filename
-  const filename = `users_export_${Date.now()}.csv`;
+  const filename = `users_export_${Date.now()}.xlsx`;
   const filePath = path.join(uploadDir, filename);
 
-  // ✅ Write file
-  fs.writeFileSync(filePath, csv, "utf8");
+  await workbook.xlsx.writeFile(filePath);
 
   return { filePath, filename };
 }
-  
-  // async exportUsersToCSV(query: GetUsersQueryDTO): Promise<{ csv: string; filename: string }> {
+
+  // async exportUsersToCSV(query: GetUsersQueryDTO): Promise<{ filePath: string; filename: string }> {
   //   const result = await this.getAllUsers({ ...query, limit: 1000 });
-    
-  //   const csvData: CSVExportData[] = result.users.map((user: any) => ({
+
+  //   const csvData = result.user.map((user: any) => ({
   //     userId: user.id,
   //     username: user.username || '',
   //     fullName: user.fullName || '',
@@ -141,25 +116,25 @@ async exportUsersToCSV(query: GetUsersQueryDTO): Promise<{ filePath: string; fil
   //     bio: user.bio || '',
   //     status: user.status,
   //     isVerified: user.isVerified,
-  //     isPrivate: user.isPrivate,
+  //     isPrivate: user.isPrivate ?? false,
   //     postsCount: user.stats?.postsCount || 0,
-  //     commentsCount: user.stats?.commentsCount || 0,
-  //     totalLikesReceived: user.stats?.likesReceived || 0,
-  //     totalLikesGiven: user.stats?.likesGiven || 0,
+  //     // commentsCount: user.stats?.commentsCount || 0,
+  //     // totalLikesReceived: user.stats?.likesReceived || 0,
+  //     // totalLikesGiven: user.stats?.likesGiven || 0,
   //     followersCount: user.stats?.followersCount || 0,
   //     followingCount: user.stats?.followingCount || 0,
   //     totalEngagement: user.stats?.totalEngagement || 0,
-  //     accountCreated: user.createdAt,
-  //     lastLogin: user.lastLoginAt || 'Never',
-  //     accountDeleted: user.deletedAt || 'Active',
-  //     postsData: user.posts?.map((p: any) => 
+  //     accountCreated: formatDate(user.createdAt),
+  //     lastLogin: formatDate(user.lastLoginAt) || '',
+  //     accountDeleted: user.deletedAt || '',
+  //     postsData: user.posts?.map((p: any) =>
   //       `${p.id}: ${p.caption || 'No caption'} (${p.likesCount || 0} likes, ${p.commentsCount || 0} comments)`
   //     ).join('; ') || '',
-  //     commentsData: user.posts?.flatMap((p: any) => 
+  //     commentsData: user.posts?.flatMap((p: any) =>
   //       p.comments?.map((c: any) => `Post ${p.id}: ${c.content?.substring(0, 100)}`) || []
   //     ).join('; ') || '',
   //   }));
-    
+
   //   const fields = [
   //     { label: 'User ID', value: 'userId' },
   //     { label: 'Username', value: 'username' },
@@ -171,29 +146,38 @@ async exportUsersToCSV(query: GetUsersQueryDTO): Promise<{ filePath: string; fil
   //     { label: 'Verified', value: 'isVerified' },
   //     { label: 'Private Account', value: 'isPrivate' },
   //     { label: 'Total Posts', value: 'postsCount' },
-  //     { label: 'Total Comments', value: 'commentsCount' },
-  //     { label: 'Likes Received', value: 'totalLikesReceived' },
-  //     { label: 'Likes Given', value: 'totalLikesGiven' },
+  //     // { label: 'Total Comments', value: 'commentsCount' },
+  //     // { label: 'Likes Received', value: 'totalLikesReceived' },
+  //     // { label: 'Likes Given', value: 'totalLikesGiven' },
   //     { label: 'Followers', value: 'followersCount' },
   //     { label: 'Following', value: 'followingCount' },
   //     { label: 'Total Engagement', value: 'totalEngagement' },
   //     { label: 'Account Created', value: 'accountCreated' },
   //     { label: 'Last Login', value: 'lastLogin' },
   //     { label: 'Account Deleted', value: 'accountDeleted' },
-  //     { label: 'Posts Summary', value: 'postsData' },
+  //     // { label: 'Posts Summary', value: 'postsData' },
   //     { label: 'Comments Summary', value: 'commentsData' },
   //   ];
-    
   //   const json2csvParser = new Parser({ fields });
   //   const csv = json2csvParser.parse(csvData);
-    
-  //   const filename = `users_export_${new Date().toISOString().split('T')[0]}.csv`;
-    
-  //   return { csv, filename };
+
+  //   const uploadDir = path.join(__dirname, "../../uploads");
+  //   if (!fs.existsSync(uploadDir)) {
+  //     fs.mkdirSync(uploadDir, { recursive: true });
+  //   }
+
+  //   // ✅ Create filename
+  //   const filename = `users_export_${Date.now()}.csv`;
+  //   const filePath = path.join(uploadDir, filename);
+
+  //   // ✅ Write file
+  //   fs.writeFileSync(filePath,"\uFEFF" + csv, "utf8");
+
+  //   return { filePath, filename };
   // }
-  
+
   async getAdminStats() {
-    const AdminRepository = (await import('../repositories/admin.repository')).default;
+    // const AdminRepository = (await import('../repositories/admin.repository')).default;
     return await AdminRepository.getAdminStats();
   }
 }

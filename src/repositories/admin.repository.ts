@@ -1,5 +1,6 @@
 import prisma from '../prisma/client';
 import logger from '../config/logger';
+import { formatDate } from "../utils/dateFormatter";
 
 export class AdminRepository {
   private static instance: AdminRepository;
@@ -145,15 +146,6 @@ export class AdminRepository {
             isVerified: user.isVerified,
             isActive: user.isActive,
             status: user.deletedAt ? 'deleted' : 'active',
-            stats: {
-              postsCount: user.posts.length,
-              commentsCount,
-              likesReceived,
-              likesGiven,
-              followersCount: user._count.followers,
-              followingCount: user._count.following,
-              totalEngagement,
-            },
             posts: user.posts.map((post: any) => ({
               id: post.id,
               caption: post.caption,
@@ -162,7 +154,7 @@ export class AdminRepository {
               likesCount: post._count.likes,
               commentsCount: post._count.comments,
               isArchived: post.isArchived,
-              createdAt: post.createdAt.toISOString(),
+              createdAt: formatDate(post.createdAt),
               comments: post.comments.map((comment: any) => ({
                 id: comment.id,
                 content: comment.content,
@@ -171,7 +163,7 @@ export class AdminRepository {
                   username: comment.user.profile?.username,
                   fullName: comment.user.profile?.fullName,
                 },
-                likesCount: comment._count.likes,
+                // likesCount: comment._count.likes,
                 replies: comment.replies.map((reply: any) => ({
                   id: reply.id,
                   content: reply.content,
@@ -180,13 +172,13 @@ export class AdminRepository {
                     username: reply.user.profile?.username,
                     fullName: reply.user.profile?.fullName,
                   },
-                  createdAt: reply.createdAt.toISOString(),
+                  createdAt: formatDate(reply.createdAt),
                 })),
               })),
             })),
 
-            createdAt: user.createdAt.toISOString(),
-            deletedAt: user.deletedAt?.toISOString() || null,
+            createdAt: formatDate(user.createdAt),
+            // deletedAt: user.deletedAt?.toISOString() || null,
             lastLoginAt: user.lastLoginAt?.toISOString() || null,
           };
         })
