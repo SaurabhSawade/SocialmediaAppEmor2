@@ -135,3 +135,39 @@ export interface AdminStatsDTO {
     totalComments: number;
   }[];
 }
+export interface BulkImportUserDTO {
+  email?: string;
+  phone?: string;
+  username: string;
+  fullName?: string;
+  bio?: string;
+  role?: string;
+  isVerified?: boolean;
+  isPrivate?: boolean;
+}
+
+export interface BulkImportResultDTO {
+  total: number;
+  created: number;
+  updated: number;
+  failed: number;
+  errors: {
+    row: number;
+    email?: string;
+    username?: string;
+    error: string;
+  }[];
+  fileUrl: string;
+  filename: string;
+}
+
+export interface GetUsersQueryDTO {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: 'active' | 'deleted' | 'all';
+  startDate?: string;
+  endDate?: string;
+  orderBy?: string;
+  orderType?: 'asc' | 'desc';
+}

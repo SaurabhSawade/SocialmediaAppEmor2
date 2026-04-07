@@ -133,7 +133,7 @@ export class AdminRepository {
           const commentsCount = await prisma.comment.count({
             where: { userId: user.id, deletedAt: null },
           });
-          const totalEngagement = likesReceived + likesGiven + commentsCount;
+          const totalEngagement = likesReceived + likesGiven + commentsCount; 
           return {
             id: user.id,
             email: user.email,

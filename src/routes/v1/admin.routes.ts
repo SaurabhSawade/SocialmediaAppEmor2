@@ -3,6 +3,7 @@ import AdminController from '../../controllers/admin.controller';
 import { AdminUserController } from '../../controllers/admin.user.controller';
 import { AuthMiddleware } from '../../middlewares/auth.middleware';
 import { RoleMiddleware } from '../../middlewares/role.middleware';
+import { uploadExcel } from '../../config/multer';
 
 const router = Router();
 
@@ -12,7 +13,7 @@ router.get('/stats',AuthMiddleware.authenticate,RoleMiddleware.isAdmin, AdminCon
 // User management
 router.get('/users',AuthMiddleware.authenticate,RoleMiddleware.isAdmin, AdminController.getAllUsers);
 router.get('/users/export',AuthMiddleware.authenticate,RoleMiddleware.isAdmin, AdminController.exportUsersToCSV);
-
+router.post('/users/import',AuthMiddleware.authenticate,RoleMiddleware.isAdmin,uploadExcel.single('file'), AdminController.importUsersFromExcel);
 // Admin user management
 router.get('/users/admins',AuthMiddleware.authenticate,RoleMiddleware.isAdmin, AdminUserController.getAdminUsers);
 router.put('/users/:userId/make-admin',AuthMiddleware.authenticate,RoleMiddleware.isAdmin, AdminUserController.makeAdmin);

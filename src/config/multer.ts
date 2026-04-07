@@ -104,9 +104,49 @@ export const uploadMultipleMedia = multer({
   fileFilter: mediaFileFilter,
 });
 
+// File filter for Excel files
+const excelFileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  const allowedMimes = [
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+    'application/vnd.ms-excel', // .xls
+    'text/csv', // .csv
+  ];
+  
+  if (allowedMimes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid file type. Only Excel (.xlsx, .xls) and CSV files are allowed.'));
+  }
+};
+
+// Storage for Excel imports
+const excelStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(process.cwd(), 'uploads', 'imports');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const filename = `import_${Date.now()}${ext}`;
+    cb(null, filename);
+  },
+});
+
+export const uploadExcel = multer({
+  storage: excelStorage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: excelFileFilter,
+});
+
 export default {
   uploadAvatar,
   uploadPostMedia,
   uploadMultipleMedia,
+  uploadExcel,
   uploadsDir,
 };

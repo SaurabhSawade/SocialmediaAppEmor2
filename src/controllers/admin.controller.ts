@@ -4,6 +4,8 @@ import { ApiResponseHandler } from '../utils/api-response';
 import { AuthenticatedRequest } from '../types/request';
 import { GetUsersQueryDTO } from '../types/dto/admin.dto';
 import logger from '../config/logger';
+import excelService from '../services/excel.service';
+import { HttpStatus } from '../constants/http-status';
 
 export class AdminController {
   /**
@@ -89,6 +91,77 @@ export class AdminController {
     next(error);
   }
 }
+
+
+    /**
+   * Export users to Excel
+   * GET /api/v1/admin/users/export/excel
+   */
+  static async exportUsersToExcel(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const query: GetUsersQueryDTO = {
+        search: req.query.search as string,
+        status: req.query.status as any,
+        startDate: req.query.startDate as string,
+        endDate: req.query.endDate as string,
+        orderBy: req.query.orderBy as string,
+        orderType: req.query.orderType as any,
+      };
+      
+      const { filePath, filename } = await excelService.exportUsersToExcel(query);
+      
+      // Send file as download
+      return res.download(filePath, filename, (err) => {
+        if (err) {
+          logger.error('Error downloading file:', err);
+          next(err);
+        }
+      });
+    } catch (error) {
+      logger.error('Error in exportUsersToExcel:', error);
+      next(error);
+    }
+  }
+  
+  /**
+   * Import users from Excel file
+   * POST /api/v1/admin/users/import/excel
+   */
+  static async importUsersFromExcel(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      if (!req.file) {
+        return ApiResponseHandler.error(res, 'Please upload an Excel file', HttpStatus.BAD_REQUEST);
+      }
+      
+      const result = await excelService.importUsersFromExcel(req.file.path);
+      
+      return ApiResponseHandler.success(res, 'Import completed', result);
+    } catch (error) {
+      logger.error('Error in importUsersFromExcel:', error);
+      next(error);
+    }
+  }
+  
+  /**
+   * Download import template
+   * GET /api/v1/admin/users/import/template
+   */
+  static async downloadImportTemplate(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const { filePath, filename } = await excelService.downloadImportTemplate();
+      
+    return res.download(filePath, filename, (err) => {
+        if (err) {
+          logger.error('Error downloading template:', err);
+          next(err);
+        }
+      });
+    } catch (error) {
+      logger.error('Error in downloadImportTemplate:', error);
+      next(error);
+    }
+  }
+
   
   /**
    * Get admin dashboard statistics

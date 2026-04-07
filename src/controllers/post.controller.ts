@@ -14,7 +14,7 @@ export class PostController {
       
       const post = await PostService.createPost(userId, postData, files);
       
-      ApiResponseHandler.created(res, 'Post created successfully', post);
+      return ApiResponseHandler.created(res, 'Post created successfully', post);
     } catch (error) {
       next(error);
     }
@@ -28,7 +28,7 @@ export class PostController {
       
       const post = await PostService.getPost(postId, userId);
       
-      ApiResponseHandler.success(res, 'Post retrieved successfully', post);
+      return ApiResponseHandler.success(res, 'Post retrieved successfully', post);
     } catch (error) {
       next(error);
     }
@@ -44,7 +44,7 @@ export class PostController {
       
       const feed = await PostService.getUserFeed(userId, page, limit);
       
-      ApiResponseHandler.success(res, 'Feed retrieved successfully', feed);
+      return ApiResponseHandler.success(res, 'Feed retrieved successfully', feed);
     } catch (error) {
       next(error);
     }
@@ -58,7 +58,7 @@ export class PostController {
       
       const post = await PostService.updatePost(userId, postId, updateData);
       
-      ApiResponseHandler.success(res, 'Post updated successfully', post);
+      return ApiResponseHandler.success(res, 'Post updated successfully', post);
     } catch (error) {
       next(error);
     }
@@ -71,7 +71,7 @@ export class PostController {
       
       const result = await PostService.deletePost(userId, postId);
       
-      ApiResponseHandler.success(res, result.message);
+      return ApiResponseHandler.success(res, result.message);
     } catch (error) {
       next(error);
     }
@@ -84,7 +84,7 @@ export class PostController {
       
       const result = await PostService.archivePost(userId, postId);
       
-      ApiResponseHandler.success(res, result.message);
+      return ApiResponseHandler.success(res, result.message);
     } catch (error) {
       next(error);
     }
@@ -98,7 +98,7 @@ export class PostController {
       const result = await PostService.likePost(userId, postId);
       
       const message = result.liked ? 'Post liked' : 'Post unliked';
-      ApiResponseHandler.success(res, message, result);
+      return ApiResponseHandler.success(res, message, result);
     } catch (error) {
       next(error);
     }
