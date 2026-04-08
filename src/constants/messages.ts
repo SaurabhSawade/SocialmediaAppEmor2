@@ -47,6 +47,8 @@ export const Messages = {
   FOLLOW_NOT_FOUND: "Follow relationship not found",
   ALREADY_FOLLOWING: "Already following this user",
   CANNOT_FOLLOW_SELF: "Cannot follow yourself",
+  FOLLOW_SUCCESS: "Started following successfully",
+  UNFOLLOW_SUCCESS: "Unfollowed successfully",
 
   // Like Errors
   LIKE_NOT_FOUND: "Like not found",

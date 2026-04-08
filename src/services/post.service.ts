@@ -118,29 +118,30 @@ export class PostService {
   }
 
   async deletePost(userId: number, postId: number): Promise<{ message: string }> {
-    const post = await PostRepository.findById(postId);
+    const post = await PostRepository.findByIdSimple(postId);
 
     if (!post) {
       throw new AppError(Messages.POST_NOT_FOUND);
     }
 
-    // Delete associated media files
-    if (post.media && post.media.length > 0) {
-      for (const media of post.media) {
-        const filePath = path.join(process.cwd(), media.url);
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-        }
-      }
+    if (post.authorId !== userId) {
+      throw new AppError(Messages.POST_UNAUTHORIZED);
     }
 
-    await PostRepository.delete(postId);
+    const mediaUrls = await PostRepository.deleteWithMedia(postId);
+
+    for (const url of mediaUrls) {
+      const filePath = path.join(process.cwd(), url);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
 
     return { message: Messages.DELETED };
   }
 
   async archivePost(userId: number, postId: number): Promise<{ message: string }> {
-    const post = await PostRepository.findById(postId);
+    const post = await PostRepository.findByIdSimple(postId);
 
     if (!post) {
       return new AppError('Post not found');

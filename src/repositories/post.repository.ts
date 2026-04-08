@@ -101,6 +101,18 @@ export class PostRepository {
       throw error;
     }
   }
+
+  async findByIdSimple(id: number) {
+    try {
+      return await prisma.post.findUnique({
+        where: { id },
+        select: { id: true, authorId: true, media: true },
+      });
+    } catch (error) {
+      logger.error('Error in PostRepository.findByIdSimple:', error);
+      throw error;
+    }
+  }
   
   async getUserFeed(userId: number, page: number = 1, limit: number = 10) {
     try {
@@ -200,6 +212,30 @@ export class PostRepository {
       });
     } catch (error) {
       logger.error('Error in PostRepository.archive:', error);
+      throw error;
+    }
+  }
+
+  async getMediaUrls(id: number) {
+    try {
+      const post = await prisma.post.findUnique({
+        where: { id },
+        select: { media: true },
+      });
+      return post?.media.map(m => m.url) || [];
+    } catch (error) {
+      logger.error('Error in PostRepository.getMediaUrls:', error);
+      throw error;
+    }
+  }
+
+  async deleteWithMedia(id: number) {
+    try {
+      const mediaUrls = await this.getMediaUrls(id);
+      await prisma.post.delete({ where: { id } });
+      return mediaUrls;
+    } catch (error) {
+      logger.error('Error in PostRepository.deleteWithMedia:', error);
       throw error;
     }
   }

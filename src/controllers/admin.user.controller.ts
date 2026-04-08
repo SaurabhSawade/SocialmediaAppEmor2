@@ -1,8 +1,7 @@
 import { Response, NextFunction } from 'express';
-import prisma from '../prisma/client';
+import AdminService from '../services/admin.service';
 import { ApiResponseHandler } from '../utils/api-response';
 import { AuthenticatedRequest } from '../types/request';
-// import logger from '../config/logger';
 
 export class AdminUserController {
   /**
@@ -11,17 +10,7 @@ export class AdminUserController {
    */
   static async getAdminUsers(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const admins = await prisma.user.findMany({
-        where: { role: 'ADMIN', deletedAt: null },
-        select: {
-          id: true,
-          email: true,
-        //   username: true,
-        //   fullName: true,
-          role: true,
-          createdAt: true,
-        },
-      });
+      const admins = await AdminService.getAdminUsers();
       
       ApiResponseHandler.success(res, 'Admin users retrieved successfully', admins);
     } catch (error) {
@@ -37,17 +26,7 @@ export class AdminUserController {
     try {
       const userId = parseInt(req.params.userId as string);
       
-      const user = await prisma.user.update({
-        where: { id: userId },
-        data: { role: 'ADMIN' },
-        select: {
-          id: true,
-          email: true,
-        //   username: true,
-        //   fullName: true,
-        //   role: true,
-        },
-      });
+      const user = await AdminService.updateUserRole(userId, 'ADMIN', req.user!.id);
       
       ApiResponseHandler.success(res, 'User promoted to admin successfully', user);
     } catch (error) {
@@ -63,22 +42,11 @@ export class AdminUserController {
     try {
       const userId = parseInt(req.params.userId as string);
       
-      // Don't allow removing your own admin role
       if (userId === req.user!.id) {
         return ApiResponseHandler.error(res, 'You cannot remove your own admin role', 400);
       }
       
-      const user = await prisma.user.update({
-        where: { id: userId },
-        data: { role: 'USER' },
-        select: {
-          id: true,
-          email: true,
-        //   username: true,
-        //   fullName: true,
-        //   role: true,
-        },
-      });
+      const user = await AdminService.updateUserRole(userId, 'USER', req.user!.id);
       
       ApiResponseHandler.success(res, 'Admin role removed successfully', user);
     } catch (error) {

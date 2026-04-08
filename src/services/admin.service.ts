@@ -177,8 +177,37 @@ async exportUsersToExcel(query: GetUsersQueryDTO): Promise<{ filePath: string; f
   // }
 
   async getAdminStats() {
-    // const AdminRepository = (await import('../repositories/admin.repository')).default;
     return await AdminRepository.getAdminStats();
+  }
+
+  async updateUserRole(userId: number, newRole: 'USER' | 'ADMIN', currentUserId: number) {
+    if (userId === currentUserId) {
+      throw new Error('You cannot change your own role');
+    }
+
+    return await AdminRepository.updateUserRole(userId, newRole);
+  }
+
+  async deleteUserPermanently(userId: number, currentUserId: number) {
+    if (userId === currentUserId) {
+      throw new Error('You cannot delete your own account');
+    }
+
+    return await AdminRepository.deleteUserPermanently(userId);
+  }
+
+  async getUserById(userId: number) {
+    const result = await AdminRepository.getAllUsers({ page: 1, limit: 1, search: String(userId) });
+    
+    if (!result.users || result.users.length === 0) {
+      throw new Error('User not found');
+    }
+    
+    return result.users[0];
+  }
+
+  async getAdminUsers() {
+    return await AdminRepository.getAdminUsers();
   }
 }
 

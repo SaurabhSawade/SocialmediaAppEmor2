@@ -453,10 +453,7 @@ export class AuthService {
       throw new AppError('Cannot revoke current session. Use logout instead.', 400);
     }
     
-    // Get session to revoke
-    const sessionToRevoke = await prisma.session.findUnique({
-      where: { id: sessionId, userId },
-    });
+    const sessionToRevoke = await TokenRepository.findSessionById(sessionId, userId);
     
     if (!sessionToRevoke) {
       throw new AppError('Session not found', 404);

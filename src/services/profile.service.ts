@@ -184,6 +184,11 @@ export class ProfileService {
     
     return { message: 'Avatar removed successfully' };
   }
+
+  async checkUsernameAvailability(username: string): Promise<{ username: string; isAvailable: boolean }> {
+    const isAvailable = await ProfileRepository.checkUsernameAvailability(username);
+    return { username, isAvailable };
+  }
 }
 
 export default ProfileService.getInstance();

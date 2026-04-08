@@ -256,6 +256,215 @@ export class AdminRepository {
       throw error;
     }
   }
+
+  async updateUserRole(userId: number, role: 'USER' | 'ADMIN') {
+    try {
+      return await prisma.user.update({
+        where: { id: userId },
+        data: { role },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+        },
+      });
+    } catch (error) {
+      logger.error('Error in AdminRepository.updateUserRole:', error);
+      throw error;
+    }
+  }
+
+  async deleteUserPermanently(userId: number) {
+    try {
+      await prisma.$transaction([
+        prisma.savedPost.deleteMany({ where: { userId } }),
+        prisma.like.deleteMany({ where: { userId } }),
+        prisma.comment.deleteMany({ where: { userId } }),
+        prisma.post.deleteMany({ where: { authorId: userId } }),
+        prisma.follow.deleteMany({ where: { followerId: userId } }),
+        prisma.follow.deleteMany({ where: { followingId: userId } }),
+        prisma.token.deleteMany({ where: { userId } }),
+        prisma.session.deleteMany({ where: { userId } }),
+        prisma.oTP.deleteMany({ where: { userId } }),
+        prisma.user.delete({ where: { id: userId } }),
+      ]);
+      return { message: 'User permanently deleted successfully' };
+    } catch (error) {
+      logger.error('Error in AdminRepository.deleteUserPermanently:', error);
+      throw error;
+    }
+  }
+
+  async getAdminUsers() {
+    try {
+      return await prisma.user.findMany({
+        where: { role: 'ADMIN', deletedAt: null },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          createdAt: true,
+        },
+      });
+    } catch (error) {
+      logger.error('Error in AdminRepository.getAdminUsers:', error);
+      throw error;
+    }
+  }
+
+  async findUserById(userId: number) {
+    try {
+      return await prisma.user.findUnique({
+        where: { id: userId, deletedAt: null },
+        include: { profile: true },
+      });
+    } catch (error) {
+      logger.error('Error in AdminRepository.findUserById:', error);
+      throw error;
+    }
+  }
+
+  async findUserByEmail(email: string) {
+    try {
+      return await prisma.user.findUnique({
+        where: { email },
+        include: { profile: true },
+      });
+    } catch (error) {
+      logger.error('Error in AdminRepository.findUserByEmail:', error);
+      throw error;
+    }
+  }
+
+  async findProfileByUsername(username: string, excludeUserId?: number) {
+    try {
+      return await prisma.profile.findFirst({
+        where: { username, userId: { not: excludeUserId } },
+      });
+    } catch (error) {
+      logger.error('Error in AdminRepository.findProfileByUsername:', error);
+      throw error;
+    }
+  }
+
+  async findUserByPhone(phone: string) {
+    try {
+      return await prisma.user.findFirst({
+        where: { phone },
+      });
+    } catch (error) {
+      logger.error('Error in AdminRepository.findUserByPhone:', error);
+      throw error;
+    }
+  }
+
+  async updateUser(userId: number, data: any) {
+    try {
+      return await prisma.user.update({
+        where: { id: userId },
+        data,
+      });
+    } catch (error) {
+      logger.error('Error in AdminRepository.updateUser:', error);
+      throw error;
+    }
+  }
+
+  async updateProfile(userId: number, data: any) {
+    try {
+      return await prisma.profile.update({
+        where: { userId },
+        data,
+      });
+    } catch (error) {
+      logger.error('Error in AdminRepository.updateProfile:', error);
+      throw error;
+    }
+  }
+
+  async createProfile(data: { userId: number; username: string; fullName?: string; bio?: string; isPrivate?: boolean }) {
+    try {
+      return await prisma.profile.create({
+        data,
+      });
+    } catch (error) {
+      logger.error('Error in AdminRepository.createProfile:', error);
+      throw error;
+    }
+  }
+
+  async createUserWithProfile(data: {
+    email?: string | null;
+    phone?: string | null;
+    password: string;
+    role: 'USER' | 'ADMIN';
+    isVerified: boolean;
+    isActive: boolean;
+    deletedAt?: Date | null;
+    profile: {
+      username: string;
+      fullName?: string | null;
+      bio?: string | null;
+      isPrivate: boolean;
+    };
+  }) {
+    try {
+      return await prisma.$transaction(async (tx) => {
+        const newUser = await tx.user.create({
+          data: {
+            email: data.email,
+            phone: data.phone,
+            password: data.password,
+            role: data.role,
+            isVerified: data.isVerified,
+            isActive: data.isActive,
+            deletedAt: data.deletedAt,
+            profile: {
+              create: data.profile,
+            },
+          },
+          include: { profile: true },
+        });
+        return newUser;
+      });
+    } catch (error) {
+      logger.error('Error in AdminRepository.createUserWithProfile:', error);
+      throw error;
+    }
+  }
+
+  async emailExists(email: string, excludeUserId?: number) {
+    try {
+      return await prisma.user.findFirst({
+        where: { email, id: { not: excludeUserId } },
+      });
+    } catch (error) {
+      logger.error('Error in AdminRepository.emailExists:', error);
+      throw error;
+    }
+  }
+
+  async phoneExists(phone: string) {
+    try {
+      return await prisma.user.findFirst({
+        where: { phone },
+      });
+    } catch (error) {
+      logger.error('Error in AdminRepository.phoneExists:', error);
+      throw error;
+    }
+  }
+
+  async usernameExists(username: string, excludeUserId?: number) {
+    try {
+      return await prisma.profile.findFirst({
+        where: { username, userId: { not: excludeUserId } },
+      });
+    } catch (error) {
+      logger.error('Error in AdminRepository.usernameExists:', error);
+      throw error;
+    }
+  }
 }
 
 export default AdminRepository.getInstance();  

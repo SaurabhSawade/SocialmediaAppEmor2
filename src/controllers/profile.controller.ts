@@ -92,13 +92,9 @@ export class ProfileController {
   static async checkUsername(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const username = Array.isArray(req.params.username) ? req.params.username[0] : req.params.username;
-      const ProfileRepository = (await import('../repositories/profile.repository')).default;
-      const isAvailable = await ProfileRepository.checkUsernameAvailability(username);
+      const result = await ProfileService.checkUsernameAvailability(username);
       
-      ApiResponseHandler.success(res, 'Username availability checked', {
-        username,
-        isAvailable,
-      });
+      ApiResponseHandler.success(res, 'Username availability checked', result);
     } catch (error) {
       next(error);
     }

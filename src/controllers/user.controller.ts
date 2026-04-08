@@ -186,20 +186,9 @@ export class UserController {
       const userIdParam = Array.isArray(req.params.userId) ? req.params.userId[0] : req.params.userId;
       const userId = parseInt(userIdParam);
       
-      // Get user with stats (includes post count and follow counts)
-      const UserRepository = (await import('../repositories/user.repository')).default;
-      const user = await UserRepository.getUserWithStats(userId);
+      const stats = await UserService.getUserStats(userId);
       
-      if (!user) {
-        void ApiResponseHandler.error(res, 'User not found', 404);
-        return;
-      }
-      
-      ApiResponseHandler.success(res, 'User stats retrieved successfully', {
-        postsCount: user._count?.posts || 0,
-        followersCount: user._count?.followers || 0,
-        followingCount: user._count?.following || 0,
-      });
+      ApiResponseHandler.success(res, 'User stats retrieved successfully', stats);
     } catch (error) {
       next(error);
     }

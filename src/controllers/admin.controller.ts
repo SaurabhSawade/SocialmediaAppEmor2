@@ -135,7 +135,7 @@ export class AdminController {
       
       const result = await excelService.importUsersFromExcel(req.file.path);
       
-      return ApiResponseHandler.success(res, 'Import completed', result);
+      return ApiResponseHandler.success(res, 'Import completed', { fileUrl: result.fileUrl });
     } catch (error) {
       logger.error('Error in importUsersFromExcel:', error);
       next(error);
@@ -185,13 +185,9 @@ export class AdminController {
   static async getUserById(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const userId = parseInt(req.params.userId as string);
-      const result = await AdminService.getAllUsers({ page: 1, limit: 1, search: String(userId) });
+      const user = await AdminService.getUserById(userId);
       
-      if (!result.user || result.user.length === 0) {
-        return ApiResponseHandler.error(res, 'User not found', 404);
-      }
-      
-      return ApiResponseHandler.success(res, 'User retrieved successfully', result.user[0]);
+      return ApiResponseHandler.success(res, 'User retrieved successfully', user);
     } catch (error) {
       logger.error('Error in getUserById:', error);
       next(error);
@@ -211,22 +207,7 @@ export class AdminController {
         return ApiResponseHandler.error(res, 'Invalid role. Must be USER or ADMIN', 400);
       }
       
-      if (userId === req.user!.id) {
-        return ApiResponseHandler.error(res, 'You cannot change your own role', 400);
-      }
-      
-      const prisma = (await import('../prisma/client')).default;
-      const user = await prisma.user.update({
-        where: { id: userId },
-        data: { role },
-        select: {
-          id: true,
-          email: true,
-        //   username: true,
-        //   fullName: true,
-          role: true,
-        },
-      });
+      const user = await AdminService.updateUserRole(userId, role, req.user!.id);
       
       return  ApiResponseHandler.success(res, `User role updated to ${role} successfully`, user);
     } catch (error) {
@@ -243,26 +224,9 @@ export class AdminController {
     try {
       const userId = parseInt(req.params.userId as string);
       
-      if (userId === req.user!.id) {
-        return ApiResponseHandler.error(res, 'You cannot delete your own account', 400);
-      }
+      await AdminService.deleteUserPermanently(userId, req.user!.id);
       
-      const prisma = (await import('../prisma/client')).default;
-      
-      await prisma.$transaction([
-        prisma.savedPost.deleteMany({ where: { userId } }),
-        prisma.like.deleteMany({ where: { userId } }),
-        prisma.comment.deleteMany({ where: { userId } }),
-        prisma.post.deleteMany({ where: { authorId: userId } }),
-        prisma.follow.deleteMany({ where: { followerId: userId } }),
-        prisma.follow.deleteMany({ where: { followingId: userId } }),
-        prisma.token.deleteMany({ where: { userId } }),
-        prisma.session.deleteMany({ where: { userId } }),
-        prisma.oTP.deleteMany({ where: { userId } }),
-        prisma.user.delete({ where: { id: userId } }),
-      ]);
-      
-     return  ApiResponseHandler.success(res, 'User permanently deleted successfully');
+      return  ApiResponseHandler.success(res, 'User permanently deleted successfully');
     } catch (error) {
       logger.error('Error in deleteUserPermanently:', error);
       next(error);

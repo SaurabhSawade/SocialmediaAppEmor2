@@ -133,6 +133,17 @@ export class TokenRepository {
       throw error;
     }
   }
+
+  async findSessionById(sessionId: string, userId: number) {
+    try {
+      return await prisma.session.findUnique({
+        where: { id: sessionId, userId },
+      });
+    } catch (error) {
+      logger.error('Error in TokenRepository.findSessionById:', error);
+      throw error;
+    }
+  }
   
   async revokeSession(token: string) {
     try {

@@ -1,10 +1,11 @@
 import ExcelJS from 'exceljs';
 import path from 'path';
 import fs from 'fs';
-import prisma from '../prisma/client';
 import bcrypt from 'bcryptjs';
 import logger from '../config/logger';
 import { BulkImportResultDTO, GetUsersQueryDTO } from '../types/dto/admin.dto';
+import AdminRepository from '../repositories/admin.repository';
+import AdminService from './admin.service';
 
 export class ExcelService {
   private static instance: ExcelService;
@@ -40,7 +41,7 @@ export class ExcelService {
       { header: 'User ID', key: 'userId', width: 15 },
       { header: 'Username', key: 'username', width: 20 },
       { header: 'Full Name', key: 'fullName', width: 20 },
-      { header: 'Email', key: 'email', width: 25 },
+      { header: 'Email', key:  'email', width: 25 },
       { header: 'Phone', key: 'phone', width: 15 },
       { header: 'Bio', key: 'bio', width: 40 },
       { header: 'Role', key: 'role', width: 10 },
@@ -237,18 +238,12 @@ export class ExcelService {
         // Check if user exists (by ID)
         let existingUser = null;
         if (userIdNum && !isNaN(userIdNum)) {
-          existingUser = await prisma.user.findUnique({
-            where: { id: userIdNum, deletedAt: null },
-            include: { profile: true },
-          });
+          existingUser = await AdminRepository.findUserById(userIdNum);
         }
         
         // If not found by ID, check by email
         if (!existingUser && email) {
-          existingUser = await prisma.user.findUnique({
-            where: { email },
-            include: { profile: true },
-          });
+          existingUser = await AdminRepository.findUserByEmail(email);
         }
         
         if (existingUser) {
@@ -258,9 +253,7 @@ export class ExcelService {
           
           // Update User table fields
           if (email && email !== existingUser.email) {
-            const emailExists = await prisma.user.findFirst({
-              where: { email, id: { not: existingUser.id } },
-            });
+            const emailExists = await AdminRepository.emailExists(email, existingUser.id);
             if (emailExists) {
               throw new Error(`Email "${email}" is already taken`);
             }
@@ -282,9 +275,7 @@ export class ExcelService {
           
           // Update Profile table fields
           if (username && (!existingUser.profile || username !== existingUser.profile.username)) {
-            const profileExists = await prisma.profile.findFirst({
-              where: { username, userId: { not: existingUser.id } },
-            });
+            const profileExists = await AdminRepository.usernameExists(username, existingUser.id);
             if (profileExists) {
               throw new Error(`Username "${username}" is already taken`);
             }
@@ -297,28 +288,19 @@ export class ExcelService {
           
           // Execute updates
           if (Object.keys(updateUserData).length > 0) {
-            await prisma.user.update({
-              where: { id: existingUser.id },
-              data: updateUserData,
-            });
+            await AdminRepository.updateUser(existingUser.id, updateUserData);
           }
           
           if (Object.keys(updateProfileData).length > 0) {
             if (existingUser.profile) {
-              await prisma.profile.update({
-                where: { userId: existingUser.id },
-                data: updateProfileData,
-              });
+              await AdminRepository.updateProfile(existingUser.id, updateProfileData);
             } else {
-              // Create profile if it doesn't exist
-              await prisma.profile.create({
-                data: {
-                  userId: existingUser.id,
-                  username: username || `user_${existingUser.id}`,
-                  fullName: fullName,
-                  bio: bio,
-                  isPrivate: isPrivate || false,
-                },
+              await AdminRepository.createProfile({
+                userId: existingUser.id,
+                username: username || `user_${existingUser.id}`,
+                fullName: fullName,
+                bio: bio,
+                isPrivate: isPrivate || false,
               });
             }
           }
@@ -331,18 +313,14 @@ export class ExcelService {
           }
           
           // Check if username exists in profile
-          const profileExists = await prisma.profile.findFirst({
-            where: { username },
-          });
+          const profileExists = await AdminRepository.usernameExists(username);
           if (profileExists) {
             throw new Error(`Username "${username}" is already taken`);
           }
           
           // Check if email exists
           if (email) {
-            const emailExists = await prisma.user.findFirst({
-              where: { email },
-            });
+            const emailExists = await AdminRepository.emailExists(email);
             if (emailExists) {
               throw new Error(`Email "${email}" is already taken`);
             }
@@ -350,9 +328,7 @@ export class ExcelService {
           
           // Check if phone exists
           if (phone) {
-            const phoneExists = await prisma.user.findFirst({
-              where: { phone },
-            });
+            const phoneExists = await AdminRepository.phoneExists(phone);
             if (phoneExists) {
               throw new Error(`Phone "${phone}" is already taken`);
             }
@@ -363,28 +339,20 @@ export class ExcelService {
           const hashedPassword = await bcrypt.hash(randomPassword, 10);
           
           // Create user and profile in transaction
-          await prisma.$transaction(async (tx) => {
-            const newUser = await tx.user.create({
-              data: {
-                email: email || null,
-                phone: phone || null,
-                password: hashedPassword,
-                role: role === 'ADMIN' ? 'ADMIN' : 'USER',
-                isVerified: isVerified || false,
-                isActive: status !== 'deleted',
-                deletedAt: status === 'deleted' ? new Date() : null,
-              },
-            });
-            
-            await tx.profile.create({
-              data: {
-                userId: newUser.id,
-                username: username,
-                fullName: fullName || null,
-                bio: bio || null,
-                isPrivate: isPrivate || false,
-              },
-            });
+          await AdminRepository.createUserWithProfile({
+            email: email || null,
+            phone: phone || null,
+            password: hashedPassword,
+            role: role === 'ADMIN' ? 'ADMIN' : 'USER',
+            isVerified: isVerified || false,
+            isActive: status !== 'deleted',
+            deletedAt: status === 'deleted' ? new Date() : null,
+            profile: {
+              username: username,
+              fullName: fullName || null,
+              bio: bio || null,
+              isPrivate: isPrivate || false,
+            },
           });
           
           results.created++;

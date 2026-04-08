@@ -1,5 +1,4 @@
 import FollowRepository from '../repositories/follow.repository';
-import UserRepository from '../repositories/user.repository';
 import { Messages } from '../constants/messages';
 import { AppError } from "../utils/app-error";
 // import logger from '../config/logger';
@@ -17,42 +16,36 @@ export class FollowService {
   }
   
   async followUser(followerId: number, followingId: number): Promise<{ followed: boolean; message: string }> {
-    // Check if trying to follow self
     if (followerId === followingId) {
       throw new AppError(Messages.CANNOT_FOLLOW_SELF);
     }
     
-    // Check if target user exists and is not deleted
-    const targetUser = await UserRepository.findById(followingId);
-    if (!targetUser) {
+    const targetUserExists = await FollowRepository.checkUserExists(followingId);
+    if (!targetUserExists) {
       throw new AppError(Messages.USER_NOT_FOUND);
     }
     
-    // Check if already following
     const existingFollow = await FollowRepository.findFollow(followerId, followingId);
     
     if (existingFollow) {
-      // Unfollow
       await FollowRepository.unfollow(followerId, followingId);
       return { 
         followed: false, 
-        message: `Unfollowed ${targetUser.profile?.username || 'user'} successfully` 
+        message: Messages.UNFOLLOW_SUCCESS 
       };
     } else {
-      // Follow
       await FollowRepository.follow(followerId, followingId);
       return { 
         followed: true, 
-        message: `Started following ${targetUser.profile?.username || 'user'}` 
+        message: Messages.FOLLOW_SUCCESS 
       };
     }
   }
   
   async getFollowers(userId: number, page: number = 1, limit: number = 20, currentUserId?: number) {
-    // Check if user exists
-    const user = await UserRepository.findById(userId);
-    if (!user) {
-      return new AppError(Messages.USER_NOT_FOUND);
+    const userExists = await FollowRepository.checkUserExists(userId);
+    if (!userExists) {
+      throw new AppError(Messages.USER_NOT_FOUND);
     }
     
     const result = await FollowRepository.getFollowers(userId, page, limit, currentUserId);
@@ -71,10 +64,9 @@ export class FollowService {
   }
   
   async getFollowing(userId: number, page: number = 1, limit: number = 20, currentUserId?: number) {
-    // Check if user exists
-    const user = await UserRepository.findById(userId);
-    if (!user) {
-      return new AppError(Messages.USER_NOT_FOUND);
+    const userExists = await FollowRepository.checkUserExists(userId);
+    if (!userExists) {
+      throw new AppError(Messages.USER_NOT_FOUND);
     }
     
     const result = await FollowRepository.getFollowing(userId, page, limit, currentUserId);
@@ -93,10 +85,9 @@ export class FollowService {
   }
   
   async getFollowStats(userId: number) {
-    // Check if user exists
-    const user = await UserRepository.findById(userId);
-    if (!user) {
-      return new AppError(Messages.USER_NOT_FOUND);
+    const userExists = await FollowRepository.checkUserExists(userId);
+    if (!userExists) {
+      throw new AppError(Messages.USER_NOT_FOUND);
     }
     
     const stats = await FollowRepository.getFollowStats(userId);
@@ -105,14 +96,13 @@ export class FollowService {
   }
   
   async checkFollowStatus(followerId: number, followingId: number) {
-    // Check if users exist
-    const [follower, following] = await Promise.all([
-      UserRepository.findById(followerId),
-      UserRepository.findById(followingId),
+    const [followerExists, followingExists] = await Promise.all([
+      FollowRepository.checkUserExists(followerId),
+      FollowRepository.checkUserExists(followingId),
     ]);
     
-    if (!follower || !following) {
-      return new AppError(Messages.USER_NOT_FOUND);
+    if (!followerExists || !followingExists) {
+      throw new AppError(Messages.USER_NOT_FOUND);
     }
     
     const isFollowing = await FollowRepository.checkFollowStatus(followerId, followingId);
@@ -121,14 +111,13 @@ export class FollowService {
   }
   
   async getMutualFollowers(userId: number, targetUserId: number) {
-    // Check if users exist
-    const [user, targetUser] = await Promise.all([
-      UserRepository.findById(userId),
-      UserRepository.findById(targetUserId),
+    const [userExists, targetUserExists] = await Promise.all([
+      FollowRepository.checkUserExists(userId),
+      FollowRepository.checkUserExists(targetUserId),
     ]);
     
-    if (!user || !targetUser) {
-      return new AppError(Messages.USER_NOT_FOUND);
+    if (!userExists || !targetUserExists) {
+      throw new AppError(Messages.USER_NOT_FOUND);
     }
     
     const mutualFollowers = await FollowRepository.getMutualFollowers(userId, targetUserId);

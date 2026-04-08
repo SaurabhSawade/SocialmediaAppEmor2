@@ -224,6 +224,19 @@ export class FollowRepository {
       throw error;
     }
   }
+
+  async checkUserExists(userId: number): Promise<boolean> {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: userId, deletedAt: null },
+        select: { id: true },
+      });
+      return !!user;
+    } catch (error) {
+      logger.error('Error in FollowRepository.checkUserExists:', error);
+      throw error;
+    }
+  }
 }
 
 export default FollowRepository.getInstance();

@@ -278,7 +278,6 @@ export class UserService {
       return new AppError(Messages.PROFILE_NOT_FOUND, 404);
     }
     
-    // If account is private and current user doesn't follow, show limited info
     const isPrivate = profile.isPrivate;
     const isOwner = currentUserId === profile.userId;
     const isFollowing = profile.isFollowedByCurrentUser;
@@ -312,6 +311,20 @@ export class UserService {
         followingCount: profile.user._count.following,
       },
       joinedDate: profile.user.createdAt,
+    };
+  }
+
+  async getUserStats(userId: number) {
+    const user = await UserRepository.getUserWithStats(userId);
+    
+    if (!user) {
+      throw new AppError(Messages.USER_NOT_FOUND, 404);
+    }
+    
+    return {
+      postsCount: user._count?.posts || 0,
+      followersCount: user._count?.followers || 0,
+      followingCount: user._count?.following || 0,
     };
   }
 }
