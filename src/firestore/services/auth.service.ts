@@ -14,7 +14,7 @@ import { AppError } from "../../utils/app-error";
 
 export class FirestoreAuthService {
   private static instance: FirestoreAuthService;
-  private saltRounds = 10;
+  private saltRounds = 10; // i will put it in env later
 
   private constructor() {}
 

@@ -10,3 +10,6 @@ export { default as FirestoreCommentRepository } from './repositories/comment.re
 export { default as FirestoreCommentService } from './services/comment.service';
 export { default as FirestoreLikeRepository } from './repositories/like.repository';
 export { default as FirestoreTokenRepository } from './repositories/token.repository';
+export { default as FirestoreAuthService } from './services/auth.service';
+export { default as FirestoreAdminRepository } from './repositories/admin.repository';
+export { default as FirestoreAdminService } from './services/admin.service';

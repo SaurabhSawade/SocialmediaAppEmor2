@@ -1,5 +1,6 @@
 import { Response, NextFunction } from 'express';
 import AdminService from '../services/admin.service';
+import { FirestoreAdminService } from '../firestore';
 import { ApiResponseHandler } from '../utils/api-response';
 import { AuthenticatedRequest } from '../types/request';
 import { GetUsersQueryDTO } from '../types/dto/admin.dto';
@@ -8,10 +9,6 @@ import excelService from '../services/excel.service';
 import { HttpStatus } from '../constants/http-status';
 
 export class AdminController {
-  /**
-   * Get all users with filters and hierarchy
-   * GET /api/v1/admin/users
-   */
   static async getAllUsers(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const query: GetUsersQueryDTO = {
@@ -25,7 +22,8 @@ export class AdminController {
         orderType: req.query.orderType as any,
       };
       
-      const result = await AdminService.getAllUsers(query);
+      // const result = await AdminService.getAllUsers(query);
+      const result = await FirestoreAdminService.getAllUsers(query);
       
       return ApiResponseHandler.success(res, 'Users retrieved successfully', result);
     } catch (error) {
@@ -33,70 +31,36 @@ export class AdminController {
       next(error);
     }
   }
-  
-  /**
-   * Export users to CSV
-   * GET /api/v1/admin/users/export
-   */
-  // static async exportUsersToCSV(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-  //   try {
-  //     const query: GetUsersQueryDTO = {
-  //       search: req.query.search as string,
-  //       status: req.query.status as any,
-  //       startDate: req.query.startDate as string,
-  //       endDate: req.query.endDate as string,
-  //       orderBy: req.query.orderBy as string,
-  //       orderType: req.query.orderType as any,
-  //     };
-      
-  //     // const { csv, filename } = await AdminService.exportUsersToCSV(query);
-  //     const {filePath, filename} = await AdminService.exportUsersToExcel(query);
-  //     //how to return here
-  //     res.setHeader('Content-Type', 'text/csv');
-  //     res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
-  //     res.sendFile(filePath);
-  //     res.download(filePath, filename);
-  //   } catch (error) {
-  //     logger.error('Error in exportUsersToCSV:', error);
-  //     next(error);
-  //   }
-  // }
 
   static async exportUsersToCSV(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-  try {
-    const query: GetUsersQueryDTO = {
-      search: req.query.search as string,
-      status: req.query.status as any,
-      startDate: req.query.startDate as string,
-      endDate: req.query.endDate as string,
-      orderBy: req.query.orderBy as string,
-      orderType: req.query.orderType as any,
-    };
+    try {
+      const query: GetUsersQueryDTO = {
+        search: req.query.search as string,
+        status: req.query.status as any,
+        startDate: req.query.startDate as string,
+        endDate: req.query.endDate as string,
+        orderBy: req.query.orderBy as string,
+        orderType: req.query.orderType as any,
+      };
 
-    const { filePath, filename } = await AdminService.exportUsersToExcel(query);
+      // const { filePath, filename } = await AdminService.exportUsersToExcel(query);
+      const { filePath, filename } = await FirestoreAdminService.exportUsersToExcel(query);
 
-    // ✅ Correct headers (optional, download already sets it)
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 
-    // ✅ Send file for download
-    return res.download(filePath, filename, (err) => {
-      if (err) {
-        logger.error("File download error:", err);
-        next(err);
-      }
-    });
+      return res.download(filePath, filename, (err) => {
+        if (err) {
+          logger.error("File download error:", err);
+          next(err);
+        }
+      });
 
-  } catch (error) {
-    logger.error('Error in exportUsersToCSV:', error);
-    next(error);
+    } catch (error) {
+      logger.error('Error in exportUsersToCSV:', error);
+      next(error);
+    }
   }
-}
 
-
-    /**
-   * Export users to Excel
-   * GET /api/v1/admin/users/export/excel
-   */
   static async exportUsersToExcel(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const query: GetUsersQueryDTO = {
@@ -110,7 +74,6 @@ export class AdminController {
       
       const { filePath, filename } = await excelService.exportUsersToExcel(query);
       
-      // Send file as download
       return res.download(filePath, filename, (err) => {
         if (err) {
           logger.error('Error downloading file:', err);
@@ -123,10 +86,6 @@ export class AdminController {
     }
   }
   
-  /**
-   * Import users from Excel file
-   * POST /api/v1/admin/users/import/excel
-   */
   static async importUsersFromExcel(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       if (!req.file) {
@@ -142,10 +101,6 @@ export class AdminController {
     }
   }
   
-  /**
-   * Download import template
-   * GET /api/v1/admin/users/import/template
-   */
   static async downloadImportTemplate(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { filePath, filename } = await excelService.downloadImportTemplate();
@@ -162,14 +117,10 @@ export class AdminController {
     }
   }
 
-  
-  /**
-   * Get admin dashboard statistics
-   * GET /api/v1/admin/stats
-   */
   static async getAdminStats(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const stats = await AdminService.getAdminStats();
+      // const stats = await AdminService.getAdminStats();
+      const stats = await FirestoreAdminService.getAdminStats();
       
       return ApiResponseHandler.success(res, 'Admin stats retrieved successfully', stats);
     } catch (error) {
@@ -178,14 +129,11 @@ export class AdminController {
     }
   }
   
-  /**
-   * Get single user by ID
-   * GET /api/v1/admin/users/:userId
-   */
   static async getUserById(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const userId = parseInt(req.params.userId as string);
-      const user = await AdminService.getUserById(userId);
+      // const user = await AdminService.getUserById(userId);
+      const user = await FirestoreAdminService.getUserById(userId);
       
       return ApiResponseHandler.success(res, 'User retrieved successfully', user);
     } catch (error) {
@@ -194,10 +142,6 @@ export class AdminController {
     }
   }
   
-  /**
-   * Update user role
-   * PUT /api/v1/admin/users/:userId/role
-   */
   static async updateUserRole(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const userId = parseInt(req.params.userId as string);
@@ -207,7 +151,8 @@ export class AdminController {
         return ApiResponseHandler.error(res, 'Invalid role. Must be USER or ADMIN', 400);
       }
       
-      const user = await AdminService.updateUserRole(userId, role, req.user!.id);
+      // const user = await AdminService.updateUserRole(userId, role, req.user!.id);
+      const user = await FirestoreAdminService.updateUserRole(userId, role, req.user!.id);
       
       return  ApiResponseHandler.success(res, `User role updated to ${role} successfully`, user);
     } catch (error) {
@@ -216,15 +161,12 @@ export class AdminController {
     }
   }
   
-  /**
-   * Permanently delete user
-   * DELETE /api/v1/admin/users/:userId
-   */
   static async deleteUserPermanently(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const userId = parseInt(req.params.userId as string);
       
-      await AdminService.deleteUserPermanently(userId, req.user!.id);
+      // await AdminService.deleteUserPermanently(userId, req.user!.id);
+      await FirestoreAdminService.deleteUserPermanently(userId, req.user!.id);
       
       return  ApiResponseHandler.success(res, 'User permanently deleted successfully');
     } catch (error) {

@@ -1,19 +1,17 @@
 import { Response, NextFunction } from 'express';
 import UserService from '../services/user.service';
+import { FirestoreUserService } from '../firestore';
 import { ApiResponseHandler } from '../utils/api-response';
 import { AuthenticatedRequest } from '../types/request';
 import { UpdateProfileDTO, UpdateSettingsDTO } from '../types/dto/user.dto';
 import { AppError } from '../utils/app-error';
 
 export class UserController {
-  /**
-   * Get user profile
-   * GET /api/v1/users/profile
-   */
   static async getProfile(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user!.id;
-      const profile = await UserService.getUserProfile(userId);
+      // const profile = await UserService.getUserProfile(userId);
+      const profile = await FirestoreUserService.getUserProfile(userId);
       
       if (profile instanceof AppError) {
         throw profile;
@@ -25,16 +23,13 @@ export class UserController {
     }
   }
 
-  /**
-   * Update user profile
-   * PUT /api/v1/users/profile
-   */
   static async updateProfile(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user!.id;
       const updateData: UpdateProfileDTO = req.body;
       
-      const result = await UserService.updateProfile(userId, updateData);
+      // const result = await UserService.updateProfile(userId, updateData);
+      const result = await FirestoreUserService.updateProfile(userId, updateData);
       
       if (result instanceof AppError) {
         throw result;
@@ -46,10 +41,6 @@ export class UserController {
     }
   }
 
-  /**
-   * Update avatar
-   * POST /api/v1/users/avatar
-   */
   static async updateAvatar(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user!.id;
@@ -60,7 +51,8 @@ export class UserController {
         return;
       }
       
-      const result = await UserService.updateAvatar(userId, avatarUrl, avatarKey);
+      // const result = await UserService.updateAvatar(userId, avatarUrl, avatarKey);
+      const result = await FirestoreUserService.updateAvatar(userId, avatarUrl, avatarKey);
       
       ApiResponseHandler.success(res, result.message, { avatarUrl: result.avatarUrl });
     } catch (error) {
@@ -68,14 +60,11 @@ export class UserController {
     }
   }
 
-  /**
-   * Remove avatar
-   * DELETE /api/v1/users/avatar
-   */
   static async removeAvatar(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user!.id;
-      const result = await UserService.removeAvatar(userId);
+      // const result = await UserService.removeAvatar(userId);
+      const result = await FirestoreUserService.removeAvatar(userId);
       
       ApiResponseHandler.success(res, result.message);
     } catch (error) {
@@ -83,16 +72,13 @@ export class UserController {
     }
   }
 
-  /**
-   * Update user settings
-   * PUT /api/v1/users/settings
-   */
   static async updateSettings(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user!.id;
       const settingsData: UpdateSettingsDTO = req.body;
       
-      const result = await UserService.updateSettings(userId, settingsData);
+      // const result = await UserService.updateSettings(userId, settingsData);
+      const result = await FirestoreUserService.updateSettings(userId, settingsData);
       
       ApiResponseHandler.success(res, result.message, result.settings);
     } catch (error) {
@@ -100,16 +86,13 @@ export class UserController {
     }
   }
 
-  /**
-   * Change email
-   * POST /api/v1/users/change-email
-   */
   static async changeEmail(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user!.id;
       const { newEmail, password, otp } = req.body;
       
-      const result = await UserService.changeEmail(userId, newEmail, password, otp);
+      // const result = await UserService.changeEmail(userId, newEmail, password, otp);
+      const result = await FirestoreUserService.changeEmail(userId, newEmail, password, otp);
       
       ApiResponseHandler.success(res, result.message);
     } catch (error) {
@@ -117,16 +100,13 @@ export class UserController {
     }
   }
 
-  /**
-   * Change phone number
-   * POST /api/v1/users/change-phone
-   */
   static async changePhone(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user!.id;
       const { newPhone, password, otp } = req.body;
       
-      const result = await UserService.changePhone(userId, newPhone, password, otp);
+      // const result = await UserService.changePhone(userId, newPhone, password, otp);
+      const result = await FirestoreUserService.changePhone(userId, newPhone, password, otp);
       
       ApiResponseHandler.success(res, result.message);
     } catch (error) {
@@ -134,10 +114,6 @@ export class UserController {
     }
   }
 
-  /**
-   * Delete account (soft delete)
-   * DELETE /api/v1/users/account
-   */
   static async deleteAccount(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user!.id;
@@ -148,7 +124,8 @@ export class UserController {
         return;
       }
       
-      const result = await UserService.deleteAccount(userId, password);
+      // const result = await UserService.deleteAccount(userId, password);
+      const result = await FirestoreUserService.deleteAccount(userId, password);
       
       ApiResponseHandler.success(res, result.message);
     } catch (error) {
@@ -156,16 +133,13 @@ export class UserController {
     }
   }
 
-  /**
-   * Get public profile by username
-   * GET /api/v1/users/:username
-   */
   static async getPublicProfile(req: any, res: Response, next: NextFunction): Promise<void> {
     try {
       const username = Array.isArray(req.params.username) ? req.params.username[0] : req.params.username;
       const currentUserId = req.user?.id;
       
-      const profile = await UserService.getPublicProfile(username, currentUserId);
+      // const profile = await UserService.getPublicProfile(username, currentUserId);
+      const profile = await FirestoreUserService.getPublicProfile(username, currentUserId);
       
       if (profile instanceof AppError) {
         throw profile;
@@ -177,18 +151,15 @@ export class UserController {
     }
   }
 
-  /**
-   * Get user stats
-   * GET /api/v1/users/:userId/stats
-   */
   static async getUserStats(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const userIdParam = Array.isArray(req.params.userId) ? req.params.userId[0] : req.params.userId;
       const userId = parseInt(userIdParam);
       
-      const stats = await UserService.getUserStats(userId);
+      // const stats = await UserService.getUserStats(userId);
+      const stats = await FirestoreUserService.getUserStats(userId);
       
-      ApiResponseHandler.success(res, 'User stats retrieved successfully', stats);
+       ApiResponseHandler.success(res, 'User stats retrieved successfully', stats);
     } catch (error) {
       next(error);
     }

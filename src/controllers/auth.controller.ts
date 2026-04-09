@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import AuthService from "../services/auth.service";
+import { FirestoreAuthService } from "../firestore";
 import { ApiResponseHandler } from "../utils/api-response";
 import { HttpStatus } from "../constants/http-status";
 import { Messages } from "../constants/messages";
@@ -18,64 +19,36 @@ import {
 } from "../types/dto/auth.dto";
 
 export class AuthController {
-  /**
-   * Register a new user
-   * POST /api/v1/auth/register
-   */
-  static async register(
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> {
+  static async register(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const registerData: RegisterDTO = req.body;
-      const result = await AuthService.register(registerData);
+      // const result = await AuthService.register(registerData);
+      const result = await FirestoreAuthService.register(registerData);
 
-      ApiResponseHandler.created<AuthResponseDTO>(
-        res,
-        Messages.REGISTER_SUCCESS,
-        result,
-      );
+      ApiResponseHandler.created<AuthResponseDTO>(res, Messages.REGISTER_SUCCESS, result);
     } catch (error) {
       return next(error);
     }
   }
 
-  /**
-   * Login user
-   * POST /api/v1/auth/login
-   */
-  static async login(
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> {
+  static async login(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const loginData: LoginDTO = req.body;
-      const result = await AuthService.login(loginData);
+      // const result = await AuthService.login(loginData);
+      const result = await FirestoreAuthService.login(loginData);
 
-      ApiResponseHandler.success<AuthResponseDTO>(
-        res,
-        Messages.LOGIN_SUCCESS,
-        result,
-      );
+      ApiResponseHandler.success<AuthResponseDTO>(res, Messages.LOGIN_SUCCESS, result);
     } catch (error) {
       return next(error);
     }
   }
 
-  /**
-   * Resend OTP for email verification
-   * POST /api/v1/auth/resend-otp
-   */
-  static async resendOTP(
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> {
+  static async resendOTP(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { identifier }: { identifier: string } = req.body;
-      const result = await AuthService.resendOTP(identifier);
+      // const result = await AuthService.resendOTP(identifier);
+      const result = await FirestoreAuthService.resendOTP(identifier);
+      
       if(!result) {
         ApiResponseHandler.error(res, 'Unable to resend OTP. Please try again later.', HttpStatus.INTERNAL_SERVER_ERROR);
         return;
@@ -87,39 +60,23 @@ export class AuthController {
     }
   }
 
-  /**
-   * Verify OTP for email verification
-   * POST /api/v1/auth/verify-otp
-   */
-  static async verifyOTP(
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> {
+  static async verifyOTP(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { identifier, otp }: VerifyOTPDTO = req.body;
-      const result = await AuthService.verifyOTP(identifier, otp);
+      // const result = await AuthService.verifyOTP(identifier, otp);
+      const result = await FirestoreAuthService.verifyOTP(identifier, otp);
 
-      ApiResponseHandler.success(res, result.message, {
-        tokens: result.tokens,
-      });
+      ApiResponseHandler.success(res, result.message, { tokens: result.tokens });
     } catch (error) {
       return next(error);
     }
   }
 
-  /**
-   * Forgot password - send reset OTP
-   * POST /api/v1/auth/forgot-password
-   */
-  static async forgotPassword(
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> {
+  static async forgotPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { identifier }: ForgotPasswordDTO = req.body;
-      const result = await AuthService.forgotPassword(identifier);
+      // const result = await AuthService.forgotPassword(identifier);
+      const result = await FirestoreAuthService.forgotPassword(identifier);
 
       ApiResponseHandler.success(res, result.message);
     } catch (error) {
@@ -127,15 +84,7 @@ export class AuthController {
     }
   }
 
-  /**
-   * Reset password using OTP
-   * POST /api/v1/auth/reset-password
-   */
-  static async resetPassword(
-    req: Request,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> {
+  static async resetPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       console.log('ResetPassword called with:', {
         body: req.body,
@@ -150,11 +99,8 @@ export class AuthController {
         throw new AppError(Messages.MISSING_REQUIRED_FIELDS);
       }
 
-      const result = await AuthService.resetPassword(
-        identifier,
-        otp,
-        newPassword,
-      );
+      // const result = await AuthService.resetPassword(identifier, otp, newPassword);
+      const result = await FirestoreAuthService.resetPassword(identifier, otp, newPassword);
 
       ApiResponseHandler.success(res, result.message);
     } catch (error) {
@@ -163,23 +109,12 @@ export class AuthController {
     }
   }
 
-  /**
-   * Change password for authenticated user
-   * POST /api/v1/auth/change-password
-   */
-  static async changePassword(
-    req: AuthenticatedRequest,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> {
+  static async changePassword(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user!.id;
       const { currentPassword, newPassword }: ChangePasswordDTO = req.body;
-      const result = await AuthService.changePassword(
-        userId,
-        currentPassword,
-        newPassword,
-      );
+      // const result = await AuthService.changePassword(userId, currentPassword, newPassword);
+      const result = await FirestoreAuthService.changePassword(userId, currentPassword, newPassword);
 
       ApiResponseHandler.success(res, result.message);
     } catch (error) {
@@ -187,19 +122,12 @@ export class AuthController {
     }
   }
 
-  /**
-   * Change email for authenticated user
-   * POST /api/v1/auth/change-email
-   */
-  static async changeEmail(
-    req: AuthenticatedRequest,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> {
+  static async changeEmail(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user!.id;
       const { newEmail, password }: { newEmail: string; password: string } = req.body;
-      const result = await AuthService.changeEmail(userId, password, newEmail);
+      // const result = await AuthService.changeEmail(userId, password, newEmail);
+      const result = await FirestoreAuthService.changeEmail(userId, password, newEmail);
 
       ApiResponseHandler.success(res, result.message);
     } catch (error) {
@@ -207,10 +135,6 @@ export class AuthController {
     }
   }
 
-  /**
-   * Refresh access token
-   * POST /api/v1/auth/refresh-token
-   */
   static async refreshToken(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { refreshToken }: RefreshTokenDTO = req.body;
@@ -220,20 +144,16 @@ export class AuthController {
         userAgent: req.get('user-agent'),
       };
       
-      const result = await AuthService.refreshToken(refreshToken, reqInfo);
+      // const result = await AuthService.refreshToken(refreshToken, reqInfo);
+      const result = await FirestoreAuthService.refreshToken(refreshToken, reqInfo);
       
       ApiResponseHandler.success(res, 'Token refreshed successfully', result.tokens);
     } catch (error) {
       next(error);
     }
   }
-  
 
-  /**
-   * Logout user
-   * POST /api/v1/auth/logout
-   */
-   static async logout(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+  static async logout(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { refreshToken, logoutAll = false }: LogoutDTO = req.body;
       
@@ -242,13 +162,13 @@ export class AuthController {
         return;
       }
 
-      // Extract access token from Authorization header
       const authHeader = req.headers.authorization;
       const accessToken = authHeader?.startsWith('Bearer ') 
         ? authHeader.split(' ')[1] 
         : undefined;
       
-      const result = await AuthService.logout(refreshToken, logoutAll, accessToken);
+      // const result = await AuthService.logout(refreshToken, logoutAll, accessToken);
+      const result = await FirestoreAuthService.logout(refreshToken, logoutAll, accessToken);
       
       ApiResponseHandler.success(res, result.message, { revokedTokens: result.revokedTokens });
     } catch (error) {
@@ -256,12 +176,13 @@ export class AuthController {
     }
   }
 
-    static async getSessions(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+  static async getSessions(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user!.id;
       const refreshToken = req.headers['x-refresh-token'] as string;
       
-      const sessions = await AuthService.getSessions(userId, refreshToken);
+      // const sessions = await AuthService.getSessions(userId, refreshToken);
+      const sessions = await FirestoreAuthService.getSessions(userId, refreshToken);
       
       ApiResponseHandler.success(res, 'Sessions retrieved successfully', sessions);
     } catch (error) {
@@ -269,33 +190,26 @@ export class AuthController {
     }
   }
 
-    static async revokeSession(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+  static async revokeSession(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user!.id;
       const sessionId = Array.isArray(req.params.sessionId) ? req.params.sessionId[0] : req.params.sessionId;
       const refreshToken = req.headers['x-refresh-token'] as string;
       
-      const result = await AuthService.revokeSession(userId, sessionId, refreshToken);
+      // const result = await AuthService.revokeSession(userId, sessionId, refreshToken);
+      const result = await FirestoreAuthService.revokeSession(userId, sessionId, refreshToken);
       
       ApiResponseHandler.success(res, result.message);
     } catch (error) {
       next(error);
     }
   }
-  
-  
-  /**
-   * Get current authenticated user
-   * GET /api/v1/auth/me
-   */
-  static async getMe(
-    req: AuthenticatedRequest,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> {
+
+  static async getMe(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user!.id;
-      const user = await AuthService.getCurrentUser(userId);
+      // const user = await AuthService.getCurrentUser(userId);
+      const user = await FirestoreAuthService.getCurrentUser(userId);
 
       ApiResponseHandler.success(res, "User retrieved successfully", user);
     } catch (error) {
