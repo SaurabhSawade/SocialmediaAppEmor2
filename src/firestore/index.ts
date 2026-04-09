@@ -13,3 +13,4 @@ export { default as FirestoreTokenRepository } from './repositories/token.reposi
 export { default as FirestoreAuthService } from './services/auth.service';
 export { default as FirestoreAdminRepository } from './repositories/admin.repository';
 export { default as FirestoreAdminService } from './services/admin.service';
+export { FirestoreOTPService } from './services/otp.service';

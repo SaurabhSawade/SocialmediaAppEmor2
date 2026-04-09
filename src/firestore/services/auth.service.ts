@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import FirestoreUserRepository from "../repositories/user.repository";
 import FirestoreTokenRepository from "../repositories/token.repository";
 import FirestoreProfileRepository from "../repositories/profile.repository";
-import OTPService from "../../services/otp.service";
+import { FirestoreOTPService } from "./otp.service";
 import TokenService from "../../services/token.service";
 import EmailService from "../../services/email.service";
 import logger from "../../config/logger";
@@ -79,7 +79,7 @@ export class FirestoreAuthService {
 
     if (user.email) {
       logger.debug(`📧 Sending verification OTP to ${user.email}`);
-      await OTPService.generateAndSendOTP(user.id, user.email, OTPType.EMAIL_VERIFICATION);
+      await FirestoreOTPService.getInstance().generateAndSendOTP(user.id, user.email, OTPType.EMAIL_VERIFICATION);
     }
 
     const tokens = TokenService.generateTokens(user.id, user.email, user.phone, user.role);
@@ -148,7 +148,7 @@ export class FirestoreAuthService {
       throw new AppError(Messages.NO_EMAIL_ASSOCIATED);
     }
 
-    await OTPService.generateAndSendOTP(user.id, user.email, OTPType.EMAIL_VERIFICATION);
+    await FirestoreOTPService.getInstance().generateAndSendOTP(user.id, user.email, OTPType.EMAIL_VERIFICATION);
 
     return { message: Messages.OTP_SENT };
   }
@@ -160,7 +160,7 @@ export class FirestoreAuthService {
       throw new AppError(Messages.NOT_FOUND);
     }
 
-    const isValid = await OTPService.verifyOTP(user.id, otp, OTPType.EMAIL_VERIFICATION);
+    const isValid = await FirestoreOTPService.getInstance().verifyOTP(user.id, otp, OTPType.EMAIL_VERIFICATION);
     if (!isValid) {
       throw new AppError(Messages.INVALID_OTP);
     }
@@ -235,7 +235,7 @@ export class FirestoreAuthService {
       throw new AppError(Messages.NO_EMAIL_ASSOCIATED);
     }
 
-    await OTPService.generateAndSendOTP(user.id, user.email, OTPType.PASSWORD_RESET);
+    await FirestoreOTPService.getInstance().generateAndSendOTP(user.id, user.email, OTPType.PASSWORD_RESET);
 
     return { message: Messages.PASSWORD_RESET_SENT };
   }
@@ -255,7 +255,7 @@ export class FirestoreAuthService {
       throw new AppError(Messages.NOT_FOUND, 404);
     }
 
-    const isValid = await OTPService.verifyOTP(user.id, otp, OTPType.PASSWORD_RESET);
+    const isValid = await FirestoreOTPService.getInstance().verifyOTP(user.id, otp, OTPType.PASSWORD_RESET);
     if (!isValid) {
       throw new AppError(Messages.INVALID_OTP, 400);
     }

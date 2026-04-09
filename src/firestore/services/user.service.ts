@@ -156,7 +156,7 @@ export class FirestoreUserService {
       throw new AppError(Messages.EMAIL_EXISTS, 409);
     }
     
-    const OTPService = (await import('../../services/otp.service')).default;
+    const OTPService = (await import('./otp.service')).FirestoreOTPService.getInstance();
 
     if (otp) {
       const isValidOTP = await OTPService.verifyOTP(userId, otp, OTPType.EMAIL_VERIFICATION);
@@ -195,7 +195,7 @@ export class FirestoreUserService {
       throw new AppError(Messages.PHONE_EXISTS, 409);
     }
     
-    const OTPService = (await import('../../services/otp.service')).default;
+    const OTPService = (await import('./otp.service')).FirestoreOTPService.getInstance();
 
     if (otp) {
       const isValidOTP = await OTPService.verifyOTP(userId, otp, OTPType.PHONE_VERIFICATION);
