@@ -26,6 +26,13 @@ const envSchema = z.object({
   RATE_LIMIT_MAX_REQUESTS: z.string().transform(Number).default(100),
 
   CORS_ORIGIN: z.string().default("*"),
+
+  FIREBASE_API_KEY: z.string().optional(),
+  FIREBASE_AUTH_DOMAIN: z.string().optional(),
+  FIREBASE_PROJECT_ID: z.string().optional(),
+  FIREBASE_STORAGE_BUCKET: z.string().optional(),
+  FIREBASE_MESSAGING_SENDER_ID: z.string().optional(),
+  FIREBASE_APP_ID: z.string().optional(),
 });
 
 const env = envSchema.parse(process.env);

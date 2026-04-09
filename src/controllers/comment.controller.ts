@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import CommentService from '../services/comment.service';
+import FirestoreCommentService from '../firestore/services/comment.service';
 import { ApiResponseHandler } from '../utils/api-response';
 import { AuthenticatedRequest } from '../types/request';
 import { CreateCommentDTO, UpdateCommentDTO } from '../types/dto/comment.dto';
@@ -12,9 +13,11 @@ export class CommentController {
       const postId = parseInt(postIdParam, 10);
       const commentData: CreateCommentDTO = req.body;
       
-      const comment = await CommentService.addComment(userId, postId, commentData);
+      // const comment = await CommentService.addComment(userId, postId, commentData);
+      const comment = await FirestoreCommentService.addComment(userId, postId, commentData);
       
-      ApiResponseHandler.created(res, 'Comment added successfully', comment);
+      
+      return ApiResponseHandler.created(res, 'Comment added successfully', comment);
     } catch (error) {
       next(error);
     }
@@ -28,7 +31,7 @@ export class CommentController {
       
       const comments = await CommentService.getPostComments(postId, userId);
       
-      ApiResponseHandler.success(res, 'Comments retrieved successfully', comments);
+      return ApiResponseHandler.success(res, 'Comments retrieved successfully', comments);
     } catch (error) {
       next(error);
     }
@@ -42,7 +45,7 @@ export class CommentController {
       
       const comment = await CommentService.getComment(commentId, userId);
       
-      ApiResponseHandler.success(res, 'Comment retrieved successfully', comment);
+      return ApiResponseHandler.success(res, 'Comment retrieved successfully', comment);
     } catch (error) {
       next(error);
     }
@@ -57,7 +60,7 @@ export class CommentController {
       
       const comment = await CommentService.updateComment(userId, commentId, updateData);
       
-      ApiResponseHandler.success(res, 'Comment updated successfully', comment);
+      return ApiResponseHandler.success(res, 'Comment updated successfully', comment);
     } catch (error) {
       next(error);
     }
@@ -71,7 +74,7 @@ export class CommentController {
 
       const result = await CommentService.deleteComment(userId, commentId);
       
-      ApiResponseHandler.success(res, result.message);
+      return ApiResponseHandler.success(res, result.message);
     } catch (error) {
       next(error);
     }
@@ -86,7 +89,7 @@ export class CommentController {
       const result = await CommentService.likeComment(userId, commentId);
       
       const message = result.liked ? 'Comment liked' : 'Comment unliked';
-      ApiResponseHandler.success(res, message, result);
+      return ApiResponseHandler.success(res, message, result);
     } catch (error) {
       next(error);
     }
