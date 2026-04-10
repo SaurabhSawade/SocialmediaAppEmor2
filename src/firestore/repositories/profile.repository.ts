@@ -54,6 +54,15 @@ export class FirestoreProfileRepository {
     return `profile_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
+  private extractProfileId(id: string): number {
+    const parts = id.split('_');
+    if (parts.length >= 2) {
+      const parsed = parseInt(parts[1], 10);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  }
+
   async findByUserId(userId: number) {
     const profiles = await FirebaseService.getDocuments<ProfileDocument>(this.collectionName, {
       limit: 10000,
@@ -64,7 +73,8 @@ export class FirestoreProfileRepository {
     if (!profile) return null;
 
     return {
-      id: parseInt(profile.id.split('_')[1]),
+      id: this.extractProfileId(profile.id),
+      docId: profile.id,
       userId: profile.userId,
       username: profile.username,
       fullName: profile.fullName,
@@ -90,7 +100,8 @@ export class FirestoreProfileRepository {
     if (!profile) return null;
 
     return {
-      id: parseInt(profile.id.split('_')[1]),
+      id: this.extractProfileId(profile.id),
+      docId: profile.id,
       userId: profile.userId,
       username: profile.username,
       fullName: profile.fullName,
@@ -129,13 +140,13 @@ export class FirestoreProfileRepository {
       }
     }
 
-    const profileId = profile.id.toString();
+    const profileId = profile.id;
     const updateData = {
       ...data,
       updatedAt: new Date().toISOString(),
     };
 
-    await FirebaseService.updateDocument(this.collectionName, profileId, updateData);
+    await FirebaseService.updateDocument(this.collectionName, profile.docId, updateData);
 
     return this.findByUserId(userId);
   }
@@ -145,7 +156,7 @@ export class FirestoreProfileRepository {
 
     if (!profile) return null;
 
-    const profileId = profile.id.toString();
+    const profileId = profile.docId;
     await FirebaseService.updateDocument(this.collectionName, profileId, {
       avatarUrl,
       avatarKey,
@@ -210,7 +221,8 @@ export class FirestoreProfileRepository {
     await FirebaseService.setDocument(this.collectionName, id, profileData);
 
     return {
-      id: parseInt(id.split('_')[1]),
+      id: this.extractProfileId(id),
+      docId: id,
       userId,
       username: data.username,
       fullName: data.fullName,

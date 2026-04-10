@@ -1,13 +1,16 @@
 import FirestorePostRepository from '../repositories/post.repository';
-import LikeRepository from '../../repositories/like.repository';
+import FirestoreLikeRepository from '../repositories/like.repository';
+import FirestoreFollowRepository from '../repositories/follow.repository';
+import NotificationService from './notification.service';
 import { CreatePostDTO, UpdatePostDTO, PostResponseDTO } from '../../types/dto/post.dto';
 import { Messages } from '../../constants/messages';
-import { MediaType } from '../../constants/enums';
+import { MediaType, NotificationType } from '../../constants/enums';
 import logger from '../../config/logger';
 import path from 'path';
 import fs from 'fs';
 import { AppError } from "../../utils/app-error";
 import { HttpStatus } from '../../constants/http-status';
+import FirestoreUserRepository from '../repositories/user.repository';
 
 export class FirestorePostService {
   private static instance: FirestorePostService;
@@ -66,6 +69,23 @@ export class FirestorePostService {
       media: mediaItems,
     });
 
+    const user = await FirestoreUserRepository.findById(userId);
+    const username = user?.profile?.username || 'Someone';
+    
+    const followers = await FirestoreFollowRepository.getFollowers(userId, 1, 1000);
+    for (const follower of followers.users || []) {
+      if (follower.id !== userId) {
+        await NotificationService.createNotification(
+          follower.id,
+          userId,
+          NotificationType.POST,
+          `${username} created a new post`,
+          post.id,
+          'post'
+        );
+      }
+    }
+
     return this.formatPostResponse(post, userId);
   }
 
@@ -84,14 +104,12 @@ export class FirestorePostService {
 
     return {
       posts: feed.posts.map(post => this.formatPostResponse(post, userId)),
-      pagination: {
-        page: feed.page,
-        limit: feed.limit,
-        total: feed.total,
-        totalPages: feed.totalPages,
-        hasNext: feed.page < feed.totalPages,
-        hasPrev: feed.page > 1,
-      },
+      page: feed.page,
+      limit: feed.limit,
+      total: feed.total,
+      totalPages: feed.totalPages,
+      hasNext: feed.page < feed.totalPages,
+      hasPrev: feed.page > 1,
     };
   }
 
@@ -160,8 +178,22 @@ export class FirestorePostService {
       throw new AppError(Messages.POST_NOT_FOUND);
     }
 
-    const { liked } = await LikeRepository.togglePostLike(userId, postId);
-    const likesCount = await LikeRepository.getPostLikeCount(postId);
+    const { liked } = await FirestoreLikeRepository.togglePostLike(userId, postId);
+    const likesCount = await FirestoreLikeRepository.getPostLikeCount(postId);
+
+    if (liked && post.authorId && post.authorId !== userId) {
+      const liker = await FirestoreUserRepository.findById(userId);
+      const likerName = liker?.profile?.username || 'Someone';
+      
+      await NotificationService.createNotification(
+        post.authorId,
+        userId,
+        NotificationType.LIKE,
+        `${likerName} liked your post`,
+        postId,
+        'post'
+      );
+    }
 
     return { liked, likesCount };
   }

@@ -6,6 +6,7 @@ import postRoutes from "./v1/post.routes";
 import commentRoutes from "./v1/comment.routes";
 import followRoutes from "./v1/follow.routes";
 import adminRoutes from './v1/admin.routes';
+import notificationRoutes from './v1/notification.routes';
 const router = Router();
 
 // Mount routes
@@ -16,6 +17,7 @@ router.use("/", profileRoutes);
 router.use("/", commentRoutes);
 router.use('/', followRoutes);
 router.use('/admin', adminRoutes);
+router.use('/', notificationRoutes);
 
 
 export default router;

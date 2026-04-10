@@ -1,6 +1,9 @@
 import FirestoreFollowRepository from '../repositories/follow.repository';
+import NotificationService from './notification.service';
+import { NotificationType } from '../../constants/enums';
 import { Messages } from '../../constants/messages';
 import { AppError } from "../../utils/app-error";
+import FirestoreUserRepository from '../repositories/user.repository';
 
 export class FirestoreFollowService {
   private static instance: FirestoreFollowService;
@@ -34,6 +37,19 @@ export class FirestoreFollowService {
       };
     } else {
       await FirestoreFollowRepository.follow(followerId, followingId);
+      
+      const follower = await FirestoreUserRepository.findById(followerId);
+      const followerName = follower?.profile?.username || 'Someone';
+      
+      await NotificationService.createNotification(
+        followingId,
+        followerId,
+        NotificationType.FOLLOW,
+        `${followerName} started following you`,
+        followerId,
+        'user'
+      );
+      
       return { 
         followed: true, 
         message: Messages.FOLLOW_SUCCESS 
@@ -51,14 +67,12 @@ export class FirestoreFollowService {
     
     return {
       users: result.users,
-      pagination: {
-        page: result.page,
-        limit: result.limit,
-        total: result.total,
-        totalPages: result.totalPages,
-        hasNext: result.page < result.totalPages,
-        hasPrev: result.page > 1,
-      },
+      page: result.page,
+      limit: result.limit,
+      total: result.total,
+      totalPages: result.totalPages,
+      hasNext: result.page < result.totalPages,
+      hasPrev: result.page > 1,
     };
   }
   
@@ -72,14 +86,12 @@ export class FirestoreFollowService {
     
     return {
       users: result.users,
-      pagination: {
-        page: result.page,
-        limit: result.limit,
-        total: result.total,
-        totalPages: result.totalPages,
-        hasNext: result.page < result.totalPages,
-        hasPrev: result.page > 1,
-      },
+      page: result.page,
+      limit: result.limit,
+      total: result.total,
+      totalPages: result.totalPages,
+      hasNext: result.page < result.totalPages,
+      hasPrev: result.page > 1,
     };
   }
   

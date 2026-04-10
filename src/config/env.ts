@@ -33,6 +33,7 @@ const envSchema = z.object({
   FIREBASE_STORAGE_BUCKET: z.string().optional(),
   FIREBASE_MESSAGING_SENDER_ID: z.string().optional(),
   FIREBASE_APP_ID: z.string().optional(),
+  FIREBASE_DATABASE_URL: z.string().optional(),
 });
 
 const env = envSchema.parse(process.env);

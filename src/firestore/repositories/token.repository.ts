@@ -163,18 +163,19 @@ export class FirestoreTokenRepository {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-    const sessionData = {
+    const sessionData: any = {
       id,
       userId,
       token,
-      deviceInfo,
-      ipAddress,
-      userAgent,
       expiresAt: expiresAt.toISOString(),
       isActive: true,
       lastActivity: now.toISOString(),
       createdAt: now.toISOString(),
     };
+
+    if (deviceInfo !== undefined) sessionData.deviceInfo = deviceInfo;
+    if (ipAddress !== undefined) sessionData.ipAddress = ipAddress;
+    if (userAgent !== undefined) sessionData.userAgent = userAgent;
 
     await FirebaseService.setDocument(this.sessionCollection, id, sessionData);
 

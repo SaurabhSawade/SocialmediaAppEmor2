@@ -84,4 +84,11 @@ export const Messages = {
 
   // Rate Limit
   TOO_MANY_REQUESTS: "Too many requests, please try again later",
+
+  // Notifications
+  NOTIFICATIONS_RETRIEVED: "Notifications retrieved successfully",
+  NOTIFICATION_MARKED_READ: "Notification marked as read",
+  NOTIFICATIONS_MARKED_READ: "All notifications marked as read",
+  NOTIFICATION_DELETED: "Notification deleted successfully",
+  NOTIFICATIONS_CLEARED: "All notifications cleared",
 } as const;

@@ -1,9 +1,13 @@
 import FirestoreCommentRepository from '../repositories/comment.repository';
 import FirestoreLikeRepository from '../repositories/like.repository';
+import NotificationService from './notification.service';
 import { CreateCommentDTO, UpdateCommentDTO, CommentResponseDTO } from '../../types/dto/comment.dto';
 import logger from '../../config/logger';
 import { AppError } from "../../utils/app-error";
 import { Messages } from '../../constants/messages';
+import { NotificationType } from '../../constants/enums';
+import FirestoreUserRepository from '../repositories/user.repository';
+import FirestorePostRepository from '../repositories/post.repository';
 
 export class FirestoreCommentService {
   private static instance: FirestoreCommentService;
@@ -40,6 +44,21 @@ export class FirestoreCommentService {
       content: data.content,
       parentId: data.parentId,
     });
+
+    const post = await FirestorePostRepository.findById(postId);
+    if (post && post.authorId && post.authorId !== userId) {
+      const commenter = await FirestoreUserRepository.findById(userId);
+      const commenterName = commenter?.profile?.username || 'Someone';
+      
+      await NotificationService.createNotification(
+        post.authorId,
+        userId,
+        NotificationType.COMMENT,
+        `${commenterName} commented on your post`,
+        postId,
+        'post'
+      );
+    }
     
     logger.info(`Comment created successfully`, { commentId: comment.id, postId });
     return this.formatCommentResponse(comment, userId);

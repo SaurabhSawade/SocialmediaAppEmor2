@@ -176,8 +176,14 @@ export class FirestoreAdminRepository {
       throw new Error('User not found');
     }
 
+    const allProfiles = await FirebaseService.getDocuments<any>('profiles', { limit: 10000 });
+    const profile = allProfiles.data.find(p => p.userId === userId);
+    if (!profile) {
+      throw new Error('Profile not found');
+    }
+
     await FirebaseService.deleteDocument(this.userCollection, user.id);
-    await FirebaseService.deleteDocument('profiles', userId.toString());
+    await FirebaseService.deleteDocument('profiles', profile.id);
     return { message: 'User deleted permanently' };
   }
 

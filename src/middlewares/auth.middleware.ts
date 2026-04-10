@@ -6,7 +6,7 @@ import { HttpStatus } from "../constants/http-status";
 import { Messages } from "../constants/messages";
 import env from "../config/env";
 import logger from "../config/logger";
-import TokenRepository from "../repositories/token.repository";
+import { FirestoreTokenRepository } from "../firestore";
 
 export class AuthMiddleware {
   static async authenticate(
@@ -26,18 +26,15 @@ export class AuthMiddleware {
       }
 
       const token = authHeader.split(" ")[1];
-      const decoded = jwt.verify(token, env.JWT_ACCESS_SECRET) as any;
-
-      // Check if access token is revoked
-      const isRevoked = await TokenRepository.isAccessTokenRevoked(token);
-      if (isRevoked) {
-        logger.warn(`Access to revoked token for user ${decoded.userId}`);
-        return ApiResponseHandler.error(
-          res,
-          "Token has been revoked. Please login again.",
-          HttpStatus.UNAUTHORIZED,
-        );
+      console.log('[DEBUG Auth] Token received:', token ? token.substring(0, 20) + '...' : 'none');
+      
+      if (!token) {
+        console.log('[DEBUG Auth] No token provided');
+        return ApiResponseHandler.error(res, Messages.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
       }
+      
+      const decoded = jwt.verify(token, env.JWT_ACCESS_SECRET) as any;
+      console.log('[DEBUG Auth] Decoded token:', decoded);
 
       req.user = {
         id: decoded.userId,
@@ -47,10 +44,11 @@ export class AuthMiddleware {
       };
 
       next();
-    } catch (error) {
-      logger.error("Auth middleware error:", error);
-
-      if (error instanceof jwt.TokenExpiredError) {
+    } catch (error: any) {
+      console.log('[DEBUG Auth] Error:', error.message || error);
+      console.log('[DEBUG Auth] Error name:', error.name);
+      
+      if (error.name === 'TokenExpiredError') {
         return ApiResponseHandler.error(
           res,
           "Token expired",

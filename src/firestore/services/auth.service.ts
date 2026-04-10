@@ -154,13 +154,18 @@ export class FirestoreAuthService {
   }
 
   async verifyOTP(identifier: string, otp: string): Promise<{ message: string; tokens: any }> {
+    console.log('[DEBUG Auth] verifyOTP called with:', { identifier, otp, identifierType: typeof identifier });
+    
     const user = await FirestoreUserRepository.findByEmailOrPhone(identifier);
+    console.log('[DEBUG Auth] Found user:', user ? { id: user.id, email: user.email } : null);
 
     if (!user) {
       throw new AppError(Messages.NOT_FOUND);
     }
 
+    console.log('[DEBUG Auth] Calling verifyOTP with user.id:', user.id, 'type:', typeof user.id);
     const isValid = await FirestoreOTPService.getInstance().verifyOTP(user.id, otp, OTPType.EMAIL_VERIFICATION);
+    console.log('[DEBUG Auth] OTP verification result:', isValid);
     if (!isValid) {
       throw new AppError(Messages.INVALID_OTP);
     }

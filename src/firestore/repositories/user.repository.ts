@@ -51,19 +51,28 @@ export class FirestoreUserRepository {
     return `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
+  private extractUserId(id: string): number {
+    const parts = id.split('_');
+    if (parts.length >= 2) {
+      const parsed = parseInt(parts[1], 10);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  }
+
   async findById(id: number, includeDeleted: boolean = false) {
     const allUsers = await FirebaseService.getDocuments<UserDocument>(this.collectionName, {
       limit: 10000,
     });
     
-    const user = allUsers.data.find(u => parseInt(u.id) === id);
+    const user = allUsers.data.find(u => this.extractUserId(u.id) === id);
     
     if (!user) return null;
     
     if (!includeDeleted && user.deletedAt) return null;
     
     return {
-      id: parseInt(user.id),
+      id: this.extractUserId(user.id),
       email: user.email,
       phone: user.phone,
       password: user.password,
@@ -91,7 +100,7 @@ export class FirestoreUserRepository {
       if (!includeDeleted && user.deletedAt) return false;
       
       return {
-        id: parseInt(user.id),
+        id: this.extractUserId(user.id),
         email: user.email,
         phone: user.phone,
         password: user.password,
@@ -121,7 +130,7 @@ export class FirestoreUserRepository {
     if (!includeDeleted && user.deletedAt) return null;
     
     return {
-      id: parseInt(user.id),
+      id: this.extractUserId(user.id),
       email: user.email,
       phone: user.phone,
       password: user.password,
@@ -148,7 +157,7 @@ export class FirestoreUserRepository {
     if (!includeDeleted && user.deletedAt) return null;
     
     return {
-      id: parseInt(user.id),
+      id: this.extractUserId(user.id),
       email: user.email,
       phone: user.phone,
       password: user.password,
@@ -208,7 +217,7 @@ export class FirestoreUserRepository {
     await FirebaseService.setDocument(this.collectionName, id, userData);
 
     return {
-      id: parseInt(id.split('_')[1]),
+      id: this.extractUserId(id),
       email: data.email,
       phone: data.phone,
       password: data.password,
@@ -238,20 +247,28 @@ export class FirestoreUserRepository {
   }
 
   async update(id: number, data: any) {
-    const userId = id.toString();
-    const existing = await this.findById(id, true);
+    const allUsers = await FirebaseService.getDocuments<UserDocument>(this.collectionName, {
+      limit: 10000,
+    });
     
-    if (!existing) return null;
+    const user = allUsers.data.find(u => this.extractUserId(u.id) === id);
+    if (!user) return null;
     
-    const updatedData = { ...existing, ...data };
-    await FirebaseService.updateDocument(this.collectionName, userId, data);
+    const updatedData = { ...(await this.findById(id)), ...data };
+    await FirebaseService.updateDocument(this.collectionName, user.id, data);
     
     return updatedData;
   }
 
   async softDelete(id: number) {
-    const userId = id.toString();
-    await FirebaseService.updateDocument(this.collectionName, userId, {
+    const allUsers = await FirebaseService.getDocuments<UserDocument>(this.collectionName, {
+      limit: 10000,
+    });
+    
+    const user = allUsers.data.find(u => this.extractUserId(u.id) === id);
+    if (!user) return null;
+    
+    await FirebaseService.updateDocument(this.collectionName, user.id, {
       deletedAt: new Date().toISOString(),
     });
     
@@ -259,8 +276,14 @@ export class FirestoreUserRepository {
   }
 
   async updatePassword(id: number, hashedPassword: string) {
-    const userId = id.toString();
-    await FirebaseService.updateDocument(this.collectionName, userId, {
+    const allUsers = await FirebaseService.getDocuments<UserDocument>(this.collectionName, {
+      limit: 10000,
+    });
+    
+    const user = allUsers.data.find(u => this.extractUserId(u.id) === id);
+    if (!user) return null;
+    
+    await FirebaseService.updateDocument(this.collectionName, user.id, {
       password: hashedPassword,
     });
     
@@ -268,15 +291,27 @@ export class FirestoreUserRepository {
   }
 
   async updateEmail(id: number, email: string) {
-    const userId = id.toString();
-    await FirebaseService.updateDocument(this.collectionName, userId, { email });
+    const allUsers = await FirebaseService.getDocuments<UserDocument>(this.collectionName, {
+      limit: 10000,
+    });
+    
+    const user = allUsers.data.find(u => this.extractUserId(u.id) === id);
+    if (!user) return null;
+    
+    await FirebaseService.updateDocument(this.collectionName, user.id, { email });
     
     return this.findById(id, true);
   }
 
   async verifyUser(id: number) {
-    const userId = id.toString();
-    await FirebaseService.updateDocument(this.collectionName, userId, { isVerified: true });
+    const allUsers = await FirebaseService.getDocuments<UserDocument>(this.collectionName, {
+      limit: 10000,
+    });
+    
+    const user = allUsers.data.find(u => this.extractUserId(u.id) === id);
+    if (!user) return null;
+    
+    await FirebaseService.updateDocument(this.collectionName, user.id, { isVerified: true });
     
     return this.findById(id, true);
   }
@@ -293,13 +328,15 @@ export class FirestoreUserRepository {
   }
 
   async incrementField(id: number, field: 'posts' | 'followers' | 'following', delta: number = 1) {
-    const userId = id.toString();
-    const user = await this.findById(id, true);
+    const allUsers = await FirebaseService.getDocuments<any>(this.collectionName, { limit: 10000 });
+    const userDoc = allUsers.data.find(u => this.extractUserId(u.id) === id);
+    if (!userDoc) return;
     
+    const user = await this.findById(id);
     if (!user) return;
     
     const currentCount = user._count?.[field] || 0;
-    await FirebaseService.updateDocument(this.collectionName, userId, {
+    await FirebaseService.updateDocument(this.collectionName, userDoc.id, {
       [`_count.${field}`]: currentCount + delta,
     });
   }

@@ -19,7 +19,7 @@ export const rateLimiter = rateLimit({
 
 export const authRateLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute // do it in env
-  max: 2, // 2 attempts // do this in env
+  max: 50, // 2 attempts // do this in env
   skipSuccessfulRequests: true,
   message: {
     success: false,

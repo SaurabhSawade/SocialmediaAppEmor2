@@ -28,5 +28,18 @@ export enum TokenType {
   EMAIL_VERIFICATION = "EMAIL_VERIFICATION",
 }
 
-export const OTP_EXPIRY_MINUTES = 10;
+export enum NotificationType {
+  FOLLOW = "FOLLOW",
+  LIKE = "LIKE",
+  COMMENT = "COMMENT",
+  POST = "POST",
+  MENTION = "MENTION",
+}
+
+export enum NotificationStatus {
+  UNREAD = "UNREAD",
+  READ = "READ",
+}
+
+export const OTP_EXPIRY_MINUTES = 10000;
 export const OTP_LENGTH = 6;
